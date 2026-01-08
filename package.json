@@ -12,8 +12,8 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "dev:web": "turbo run dev --filter=portal-web",
-    "build:web": "turbo run build --filter=portal-web",
+    "dev:web": "turbo run dev --filter=protocolsync-portal",
+    "build:web": "turbo run build --filter=protocolsync-portal",
     "clean": "turbo run clean && rm -rf node_modules",
     "typecheck": "turbo run typecheck"
   },
@@ -23,5 +23,6 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=7.0.0"
-  }
+  },
+  "packageManager": "npm@11.6.2"
 }

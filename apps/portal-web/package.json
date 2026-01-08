@@ -11,6 +11,8 @@
     "start": "npx serve -s dist -l $PORT"
   },
   "dependencies": {
+    "@protocolsync/shared-types": "*",
+    "@protocolsync/shared-constants": "*",
     "serve": "^14.2.1",
     "@azure/msal-browser": "^4.26.2",
     "@azure/msal-react": "^3.0.22",

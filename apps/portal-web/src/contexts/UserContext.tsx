@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { setClientId, setUserId } from '../dataProvider';
+// import type { Role } from '@protocolsync/shared-types';
 
 export interface UserProfile {
   id: string;
