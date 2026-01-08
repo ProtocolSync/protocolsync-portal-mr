@@ -1,0 +1,27 @@
+{
+  "name": "@protocolsync/monorepo",
+  "version": "1.0.0",
+  "description": "ProtocolSync - Unified Web & Mobile Portal",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "dev:web": "turbo run dev --filter=portal-web",
+    "build:web": "turbo run build --filter=portal-web",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=7.0.0"
+  }
+}

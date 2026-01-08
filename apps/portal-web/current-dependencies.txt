@@ -1,0 +1,32 @@
+protocolsync-portal@0.0.0 /home/davidtay/Documents/Projects/protocolsync-portal
+├── @azure/msal-browser@4.27.0
+├── @azure/msal-react@3.0.23
+├── @coreui/coreui@5.5.0
+├── @coreui/icons-react@2.3.0
+├── @coreui/icons@3.0.1
+├── @coreui/react@5.9.2
+├── @eslint/js@9.39.2
+├── @protocolsync/shared-styles@1.0.0 (git+ssh://git@github.com/ProtocolSync/protocolsync-shared-styles.git#3f7441f7a77fb352e1c5c3a9a1ed301ae51eac42)
+├── @tailwindcss/postcss@4.1.18
+├── @types/node@24.10.4
+├── @types/react-dom@19.2.3
+├── @types/react@19.2.7
+├── @vitejs/plugin-react@5.1.2
+├── autoprefixer@10.4.23
+├── eslint-plugin-react-hooks@7.0.1
+├── eslint-plugin-react-refresh@0.4.26
+├── eslint@9.39.2
+├── globals@16.5.0
+├── postcss@8.5.6
+├── ra-data-json-server@5.13.4
+├── react-admin@5.13.4
+├── react-dom@19.2.3
+├── react-router-dom@7.11.0
+├── react@19.2.3
+├── sass-embedded@1.97.1
+├── serve@14.2.5
+├── tailwindcss@4.1.18
+├── typescript-eslint@8.51.0
+├── typescript@5.9.3
+└── vite@7.3.0
+

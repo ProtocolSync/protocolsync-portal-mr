@@ -1,0 +1,127 @@
+{
+  "color": {
+    "brand": {
+      "primary": {
+        "value": "#1E3A52",
+        "comment": "Dark Charcoal/Deep Blue from 'PROTOCOL SYNC' text."
+      },
+      "secondary": {
+        "value": "#9AAAB5",
+        "comment": "Muted Silver/Metallic Gray from the shield border and accents."
+      },
+      "accentGreen": {
+        "100": {
+          "value": "#B2E6DF",
+          "comment": "Lightest shade, ideal for success state backgrounds/alerts."
+        },
+        "300": {
+          "value": "#008A75",
+          "comment": "Lighter shade, good for hover states on buttons or backgrounds."
+        },
+        "500": {
+          "value": "#005C4D",
+          "comment": "Base Dark Clinical Green. Used for main buttons, icons, and primary headers."
+        },
+        "700": {
+          "value": "#004739",
+          "comment": "Darker shade, suitable for borders, shadows, or active states."
+        },
+        "900": {
+          "value": "#00332A",
+          "comment": "Deepest shade, used for very dark backgrounds or deep shadows."
+        }
+      }
+    },
+    "text": {
+      "default": "{color.brand.primary.value}",
+      "subtle": "#6C7A89",
+      "inverse": "#FFFFFF",
+      "error": "#CC0000",
+      "success": "{color.brand.accentGreen.500.value}",
+      "link": "#007BFF"
+    },
+    "background": {
+      "page": "#F9FAFB",
+      "card": "#FFFFFF",
+      "focus": "#E0E6EB",
+      "successLight": "{color.brand.accentGreen.100.value}"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "default": {
+        "value": "Lato, sans-serif"
+      }
+    },
+    "fontSize": {
+      "xxl": {
+        "value": "2.5rem"
+      },
+      "xl": {
+        "value": "2rem"
+      },
+      "l": {
+        "value": "1.5rem"
+      },
+      "m": {
+        "value": "1rem"
+      },
+      "s": {
+        "value": "0.875rem"
+      },
+      "xs": {
+        "value": "0.75rem"
+      }
+    },
+    "fontWeight": {
+      "regular": {
+        "value": 400
+      },
+      "semiBold": {
+        "value": 600
+      },
+      "bold": {
+        "value": 700
+      }
+    }
+  },
+  "spacing": {
+    "xxs": {
+      "value": "0.25rem"
+    },
+    "xs": {
+      "value": "0.5rem"
+    },
+    "s": {
+      "value": "1rem"
+    },
+    "m": {
+      "value": "1.5rem"
+    },
+    "l": {
+      "value": "2rem"
+    },
+    "xl": {
+      "value": "3rem"
+    }
+  },
+  "borderRadius": {
+    "none": {
+      "value": "0"
+    },
+    "default": {
+      "value": "4px"
+    },
+    "round": {
+      "value": "50%"
+    }
+  },
+  "shadow": {
+    "default": {
+      "value": "0 2px 4px rgba(0, 0, 0, 0.1)"
+    },
+    "lifted": {
+      "value": "0 8px 16px rgba(0, 0, 0, 0.15)"
+    }
+  }
+}

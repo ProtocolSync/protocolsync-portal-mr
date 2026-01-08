@@ -1,0 +1,303 @@
+// =====================================================
+// ProtocolSync Portal - Main Stylesheet
+// =====================================================
+
+// Import Tailwind directives
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// CoreUI is provided and configured by `@protocolsync/shared-styles`.
+// Do NOT import CoreUI directly here to avoid duplicate module configuration.
+
+// Import shared styles (design tokens, utilities, components, layout)
+@import '@protocolsync/shared-styles';
+
+// =====================================================
+// Portal-Specific Styles
+// =====================================================
+// Add portal-specific overrides and styles below
+
+// Floating Help Button
+.floating-help-button {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  transition: all 0.3s ease;
+  z-index: 1040;
+  padding: 0.5rem;
+  border: none;
+
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  &:active {
+    transform: scale(1.05);
+  }
+
+  .button-text {
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+    margin-top: 2px;
+  }
+
+  &.pulse {
+    animation: pulse 2s infinite;
+  }
+
+  @media (max-width: 768px) {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 56px;
+    height: 56px;
+
+    .button-text {
+      font-size: 0.65rem;
+    }
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+  }
+  100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+// Help Chat Widget
+.help-chat-modal {
+  --help-chat-primary: #3498db;
+  --help-chat-bg: #ffffff;
+  --help-chat-border: #e0e0e0;
+  --help-chat-user-bg: #e3f2fd;
+  --help-chat-assistant-bg: #f5f5f5;
+  --help-chat-text: #333333;
+  --help-chat-text-muted: #666666;
+
+  &.dark {
+    --help-chat-primary: #64b5f6;
+    --help-chat-bg: #2a2a2a;
+    --help-chat-border: #444444;
+    --help-chat-user-bg: #1e3a5f;
+    --help-chat-assistant-bg: #3a3a3a;
+    --help-chat-text: #e0e0e0;
+    --help-chat-text-muted: #b0b0b0;
+  }
+}
+
+.help-chat-body {
+  background-color: var(--help-chat-bg);
+  padding: 1.5rem;
+}
+
+.help-chat-footer {
+  border-top: 1px solid var(--help-chat-border);
+  background-color: var(--help-chat-bg);
+  padding: 1rem;
+
+  textarea.form-control {
+    border: 1px solid var(--help-chat-border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: var(--help-chat-primary);
+      box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+  }
+
+  button {
+    min-width: 100px;
+    height: fit-content;
+    align-self: flex-end;
+  }
+}
+
+.help-chat-widget {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--help-chat-bg);
+  color: var(--help-chat-text);
+}
+
+.help-message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--help-chat-border);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--help-chat-primary);
+    }
+  }
+}
+
+.help-message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 80%;
+  animation: fadeIn 0.3s ease-in;
+
+  &.user-message {
+    align-self: flex-end;
+    align-items: flex-end;
+
+    .message-content {
+      background-color: var(--help-chat-user-bg);
+      color: var(--help-chat-text);
+    }
+  }
+
+  &.assistant-message {
+    align-self: flex-start;
+    align-items: flex-start;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.message-timestamp {
+  color: var(--help-chat-text-muted);
+  font-size: 0.75rem;
+}
+
+.message-content {
+  background-color: var(--help-chat-assistant-bg);
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-text {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  color: var(--help-chat-text-muted);
+  font-style: italic;
+}
+
+.message-sources {
+  border-top: 1px solid var(--help-chat-border);
+  padding-top: 0.75rem;
+}
+
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.source-citation {
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 0.5rem;
+  border-radius: 6px;
+  border-left: 3px solid var(--help-chat-primary);
+
+  .help-chat-modal.dark & {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.source-badge {
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.source-details {
+  font-size: 0.85rem;
+}
+
+.source-label {
+  font-weight: 500;
+  color: var(--help-chat-text);
+}
+
+.source-relevance {
+  font-size: 0.75rem;
+  color: var(--help-chat-text-muted);
+}
+
+.message-metadata {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+  .help-chat-body {
+    height: calc(100vh - 200px);
+    max-height: calc(100vh - 200px);
+  }
+
+  .help-message {
+    max-width: 90%;
+  }
+
+  .help-message-list {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .message-content {
+    padding: 0.75rem;
+  }
+}

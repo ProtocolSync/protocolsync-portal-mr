@@ -1,0 +1,105 @@
+
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Prod Deploy - protocolsync-portal-prod-bkfovjzn35ddq
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+
+      - name: Debug - Check environment variables
+        env:
+          VITE_API_URL: ${{ secrets.VITE_PROD_API_URL }}
+          VITE_CHAT_API_URL: ${{ secrets.VITE_PROD_CHAT_API_URL }}
+          VITE_API_KEY: ${{ secrets.VITE_PROD_API_KEY }}
+        run: |
+          echo "VITE_API_URL is set: $(if [ -n \"$VITE_API_URL\" ]; then echo YES; else echo NO; fi)"
+          echo "VITE_CHAT_API_URL is set: $(if [ -n \"$VITE_CHAT_API_URL\" ]; then echo YES; else echo NO; fi)"
+          echo "VITE_API_KEY is set: $(if [ -n \"$VITE_API_KEY\" ]; then echo YES; else echo NO; fi)"
+
+      - name: Install dependencies and build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_PROD_API_URL }}
+          VITE_CHAT_API_URL: ${{ secrets.VITE_PROD_CHAT_API_URL }}
+          VITE_WEBSITE_URL: https://protocolsync-portal-prod-bkfovjzn35ddq.azurewebsites.net
+          VITE_AZURE_CLIENT_ID: ${{ secrets.VITE_AZURE_CLIENT_ID }}
+          VITE_AZURE_TENANT_ID: ${{ secrets.VITE_AZURE_TENANT_ID }}
+          VITE_API_KEY: ${{ secrets.VITE_PROD_API_KEY }}
+        run: |
+          echo "Building with VITE_API_URL starting with: ${VITE_API_URL:0:30}..."
+          npm install
+          rm -rf dist node_modules/.vite
+          npm run build
+
+      - name: Create static server package
+        run: |
+          cd dist
+          # Create package.json for serving static files
+          cat > package.json << 'EOF'
+          {
+            "name": "protocolsync-portal",
+            "version": "1.0.0",
+            "scripts": {
+              "start": "npx serve -s . -l $PORT"
+            },
+            "dependencies": {
+              "serve": "^14.2.1"
+            }
+          }
+          EOF
+          npm install --production
+          cd ..
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_586E3E53DCF347938A56ED7C7470423A }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_72E1DE2F19954401BA3A9D1A01BE41AA }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_318157E3756D46AA8264180B5DA7E425 }}
+
+      - name: Disable build during deployment
+        run: |
+          az webapp config appsettings set \
+            --resource-group protocolsync-rg-prod \
+            --name protocolsync-portal-prod-bkfovjzn35ddq \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false
+          az webapp restart \
+            --resource-group protocolsync-rg-prod \
+            --name protocolsync-portal-prod-bkfovjzn35ddq
+
+      - name: Set Azure App Service startup command (prod)
+        run: |
+          az webapp config set \
+            --resource-group protocolsync-rg-prod \
+            --name protocolsync-portal-prod-bkfovjzn35ddq \
+            --startup-file 'npm start'
+
+      - name: Deploy to Azure Web App
+        run: |
+          cd dist
+          zip -r ../deploy.zip .
+          cd ..
+          az webapp deploy --resource-group protocolsync-rg-prod \
+            --name protocolsync-portal-prod-bkfovjzn35ddq \
+            --src-path deploy.zip \
+            --type zip \
+            --clean true \
+            --restart false
