@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useUser } from './UserContext';
+import type { Role } from '@protocolsync/shared-types';
+import { ROLE_LABELS } from '@protocolsync/shared-constants';
 
 interface RoleContextType {
-  activeRole: string | null;
-  setActiveRole: (role: string) => void;
+  activeRole: Role | null;
+  setActiveRole: (role: Role) => void;
   canSwitchRole: boolean;
-  availableRoles: { value: string; label: string }[];
+  availableRoles: { value: Role; label: string }[];
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
@@ -17,7 +19,7 @@ interface RoleProviderProps {
 
 export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const { user } = useUser();
-  const [activeRole, setActiveRoleState] = useState<string | null>(null);
+  const [activeRole, setActiveRoleState] = useState<Role | null>(null);
 
   // Initialize active role to user's actual role
   useEffect(() => {
@@ -28,32 +30,32 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   // Determine if user can switch roles and what roles are available
   const canSwitchRole = user?.role === 'admin' || user?.role === 'site_admin' || user?.role === 'trial_lead';
-  const availableRoles: { value: string; label: string }[] = [];
+  const availableRoles: { value: Role; label: string }[] = [];
 
   if (user?.role === 'admin') {
     // CRO Admin can switch to Site Admin, Trial Lead, or Site User
     availableRoles.push(
-      { value: 'admin', label: 'ADMIN' },
-      { value: 'site_admin', label: 'SITE ADMINISTRATOR' },
-      { value: 'trial_lead', label: 'TRIAL LEAD' },
-      { value: 'site_user', label: 'SITE USER' }
+      { value: 'admin', label: ROLE_LABELS['admin'].toUpperCase() },
+      { value: 'site_admin', label: ROLE_LABELS['site_admin'].toUpperCase() },
+      { value: 'trial_lead', label: ROLE_LABELS['trial_lead'].toUpperCase() },
+      { value: 'site_user', label: ROLE_LABELS['site_user'].toUpperCase() }
     );
   } else if (user?.role === 'site_admin') {
     // Site Admin can switch to Trial Lead or Site User
     availableRoles.push(
-      { value: 'site_admin', label: 'SITE ADMINISTRATOR' },
-      { value: 'trial_lead', label: 'TRIAL LEAD' },
-      { value: 'site_user', label: 'SITE USER' }
+      { value: 'site_admin', label: ROLE_LABELS['site_admin'].toUpperCase() },
+      { value: 'trial_lead', label: ROLE_LABELS['trial_lead'].toUpperCase() },
+      { value: 'site_user', label: ROLE_LABELS['site_user'].toUpperCase() }
     );
   } else if (user?.role === 'trial_lead') {
     // Trial Lead can switch to Site User
     availableRoles.push(
-      { value: 'trial_lead', label: 'TRIAL LEAD' },
-      { value: 'site_user', label: 'SITE USER' }
+      { value: 'trial_lead', label: ROLE_LABELS['trial_lead'].toUpperCase() },
+      { value: 'site_user', label: ROLE_LABELS['site_user'].toUpperCase() }
     );
   }
 
-  const setActiveRole = (role: string) => {
+  const setActiveRole = (role: Role) => {
     // Validate that the role is available to the user
     const isValidRole = availableRoles.some(r => r.value === role);
     if (isValidRole || role === user?.role) {

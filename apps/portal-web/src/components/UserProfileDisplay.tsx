@@ -3,6 +3,7 @@ import { useRole } from '../contexts/RoleContext';
 import { useMsal } from '@azure/msal-react';
 import { useNavigate } from 'react-router-dom';
 import { CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem, CButton } from '@coreui/react';
+import type { Role } from '@protocolsync/shared-types';
 
 export const UserProfileDisplay = () => {
   const { user, loading, error } = useUser();
@@ -29,8 +30,8 @@ export const UserProfileDisplay = () => {
 
   const handleRoleModeChange = (newMode: string) => {
     console.log('[UserProfileDisplay] Switching role to:', newMode);
-    setActiveRole(newMode);
-    
+    setActiveRole(newMode as Role);
+
     // Redirect to the appropriate dashboard for the selected role
     navigate('/');
   };

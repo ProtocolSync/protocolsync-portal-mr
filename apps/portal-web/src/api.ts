@@ -11,10 +11,11 @@ export interface ApiRequestOptions extends RequestInit {
   includeAuth?: boolean;
 }
 
+// Local ApiResponse interface - simpler than shared version for this use case
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
-  error?: string;
+  error?: string; // String-based error for simplicity in the web app
   message?: string;
 }
 

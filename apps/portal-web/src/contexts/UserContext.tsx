@@ -1,32 +1,10 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { setClientId, setUserId } from '../dataProvider';
-// import type { Role } from '@protocolsync/shared-types';
+import type { User } from '@protocolsync/shared-types';
 
-export interface UserProfile {
-  id: string;
-  azureAdUserId: string;
-  email: string;
-  displayName: string;
-  role: 'admin' | 'site_admin' | 'trial_lead' | 'site_user';
-  clientId: string;
-  client: {
-    name: string;
-    organizationType: string;
-  };
-  company?: {
-    id: string;
-    name: string;
-    code: string;
-    subscriptionTier: string;
-  };
-  site?: {
-    id: string;
-    number: string;
-    name: string;
-  };
-  lastLogin?: string;
-}
+// Use the shared User type as UserProfile
+export type UserProfile = User;
 
 interface UserContextType {
   user: UserProfile | null;
