@@ -13,6 +13,9 @@
   "dependencies": {
     "@protocolsync/shared-types": "*",
     "@protocolsync/shared-constants": "*",
+    "@protocolsync/shared-utils": "*",
+    "@protocolsync/shared-services": "*",
+    "@protocolsync/shared-hooks": "*",
     "serve": "^14.2.1",
     "@azure/msal-browser": "^4.26.2",
     "@azure/msal-react": "^3.0.22",
