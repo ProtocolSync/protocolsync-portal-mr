@@ -391,10 +391,13 @@ npm run dev
 - [x] All packages building
 - [x] Documentation created
 
-### Phase 3 (Optional - In Progress)
-- [ ] Components refactored to use shared types
-- [ ] API calls using shared ApiClient
-- [ ] Business logic in shared hooks
+### Phase 3 (Core Refactoring - ✅ Complete)
+- [x] Components refactored to use shared types
+  - [x] UserContext using User type from shared-types
+  - [x] RoleContext using Role type and ROLE_LABELS
+  - [x] UserProfileDisplay with typed roles
+- [ ] API calls using shared ApiClient (optional, can be done incrementally)
+- [ ] Business logic in shared hooks (optional, can be done incrementally)
 
 ### Phase 4 (Future)
 - [ ] Mobile app created
