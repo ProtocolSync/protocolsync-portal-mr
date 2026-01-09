@@ -229,6 +229,7 @@ export const session = {
   async loginWithJWT(token: string): Promise<ApiResponse<any>> {
     sessionStorage.setItem('auth_token', token);
     
+    console.log('loginWithJWT');
     const response = await apiPost('/auth/login/jwt', {}, {
       includeApiKey: true,
       includeAuth: true

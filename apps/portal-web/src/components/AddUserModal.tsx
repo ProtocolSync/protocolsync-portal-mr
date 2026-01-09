@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNotify } from 'react-admin';
 import { useUser } from '../contexts/UserContext';
-import { useMsal } from '@azure/msal-react';
+import { usersService, sitesService } from '../apiClient';
 import {
   CModal,
   CModalHeader,
@@ -38,11 +38,8 @@ interface AddUserModalProps {
   onSuccess: () => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
 export const AddUserModal = ({ visible, onClose, onSuccess }: AddUserModalProps) => {
   const { user } = useUser();
-  const { instance } = useMsal();
   const notify = useNotify();
   const [formData, setFormData] = useState<UserFormData>({
     role: 'site_user',
@@ -56,48 +53,17 @@ export const AddUserModal = ({ visible, onClose, onSuccess }: AddUserModalProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getAuthToken = async () => {
-    const accounts = instance.getAllAccounts();
-    if (accounts.length === 0) return '';
-
-    try {
-      const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
-        account: accounts[0]
-      });
-      return tokenResponse.accessToken;
-    } catch (error) {
-      console.error('Failed to acquire token:', error);
-      return '';
-    }
-  };
-
   const fetchSites = async () => {
     if (!user?.company?.id) return;
 
     setLoadingSites(true);
     try {
-      const token = await getAuthToken();
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
+      const response = await sitesService.getSites(user.company.id);
 
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const response = await fetch(
-        `${API_BASE_URL}/companies/${user.company.id}/sites`,
-        { headers }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setSites(result.data || []);
+      if (response.success && response.data) {
+        setSites(response.data);
       } else {
-        console.error('Failed to fetch sites');
+        console.error('Failed to fetch sites:', response.error);
       }
     } catch (error) {
       console.error('Error fetching sites:', error);
@@ -126,64 +92,25 @@ export const AddUserModal = ({ visible, onClose, onSuccess }: AddUserModalProps)
     setError(null);
 
     try {
-      const token = await getAuthToken();
       const companyId = user.company.id;
 
-      const requestBody = {
+      const userData = {
         email: formData.email,
         name: formData.name,
         job_title: formData.job_title,
-        role: formData.role,
-        provisioned_by_user_id: user.id
+        role: formData.role
       };
 
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
+      console.log('[AddUserModal] Creating user for company:', companyId);
+      console.log('[AddUserModal] User data:', userData);
 
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
+      const response = await usersService.createUser(companyId, userData);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to add user');
       }
 
-      let response;
-
-      // If site is selected, use site provisioning endpoint
-      if (formData.site_id) {
-        console.log('[AddUserModal] Provisioning user for site:', formData.site_id);
-        console.log('[AddUserModal] Request body:', requestBody);
-
-        response = await fetch(
-          `${API_BASE_URL}/sites/${formData.site_id}/users/provision`,
-          {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(requestBody)
-          }
-        );
-      } else {
-        // No site selected - create company-level user only (CRO admin only)
-        console.log('[AddUserModal] Creating company-level user for company:', companyId);
-        console.log('[AddUserModal] Request body:', requestBody);
-
-        response = await fetch(
-          `${API_BASE_URL}/companies/${companyId}/users`,
-          {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(requestBody)
-          }
-        );
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to add user' }));
-        throw new Error(errorData.error || `Failed to add user (${response.status})`);
-      }
-
-      const result = await response.json();
-      console.log('[AddUserModal] User provisioned:', result);
+      console.log('[AddUserModal] User created:', response.data);
 
       const successMessage = formData.site_id
         ? `User ${formData.email} added to site successfully. They will receive an invitation email.`

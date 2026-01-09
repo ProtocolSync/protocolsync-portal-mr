@@ -5,6 +5,7 @@ import { Route } from 'react-router-dom';
 import { createTheme } from '@mui/material/styles';
 import { msalConfig } from './authConfig';
 import { protocolSyncProvider, initializeDataProvider } from './dataProvider';
+import { initializeApiClient } from './apiClient';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { CustomLayout } from './components/CustomLayout';
 import { SiteAdminDashboard } from './components/SiteAdminDashboard';
@@ -86,6 +87,9 @@ try {
     
     // Initialize data provider with MSAL instance
     initializeDataProvider(msalInstance);
+
+    // Initialize API client with MSAL instance
+    initializeApiClient(msalInstance);
     
     // Account selection logic is app dependent. Adjust as needed for your use case.
     const accounts = msalInstance.getAllAccounts();

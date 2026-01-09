@@ -12,8 +12,7 @@ import {
 } from '@coreui/react';
 import { useUser } from '../contexts/UserContext';
 import { useNotify, useRefresh } from 'react-admin';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { sitesService } from '../apiClient';
 
 interface SiteStatusModalProps {
   visible: boolean;
@@ -48,28 +47,13 @@ export const SiteStatusModal = ({ visible, onClose, site }: SiteStatusModalProps
     setError(null);
 
     try {
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/sites/${site.site_id}/status`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({
-          status: newStatus,
-          reason: reason.trim(),
-          performed_by_user_id: user?.id
-        })
+      const response = await sitesService.updateSiteStatus(site.site_id, {
+        status: newStatus,
+        reason: reason.trim(),
+        performed_by_user_id: parseInt(user?.id || '0')
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         notify(
           `Site ${actionLower}d successfully. All changes are logged for compliance.`,
           { type: 'success' }
@@ -77,7 +61,7 @@ export const SiteStatusModal = ({ visible, onClose, site }: SiteStatusModalProps
         refresh();
         onClose();
       } else {
-        setError(data.error || `Failed to ${actionLower} site`);
+        setError(response.error || `Failed to ${actionLower} site`);
       }
     } catch (err: any) {
       const errorMessage = err.message || `Failed to ${actionLower} site`;

@@ -1,0 +1,76 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug Portal Web (Chrome)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/portal-web",
+      "sourceMapPathOverrides": {
+        "webpack:///./~/*": "${workspaceFolder}/node_modules/*",
+        "webpack:///./*": "${workspaceFolder}/apps/portal-web/*",
+        "webpack:///src/*": "${workspaceFolder}/apps/portal-web/src/*",
+        "webpack:///*": "*",
+        "meteor://💥app/*": "${workspaceFolder}/apps/portal-web/*"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ]
+    },
+    {
+      "type": "msedge",
+      "request": "launch",
+      "name": "Debug Portal Web (Edge)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/portal-web",
+      "sourceMapPathOverrides": {
+        "webpack:///./~/*": "${workspaceFolder}/node_modules/*",
+        "webpack:///./*": "${workspaceFolder}/apps/portal-web/*",
+        "webpack:///src/*": "${workspaceFolder}/apps/portal-web/src/*",
+        "webpack:///*": "*",
+        "meteor://💥app/*": "${workspaceFolder}/apps/portal-web/*"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ]
+    },
+    {
+      "type": "chrome",
+      "request": "attach",
+      "name": "Attach to Portal Web (Chrome)",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/apps/portal-web",
+      "sourceMapPathOverrides": {
+        "webpack:///./~/*": "${workspaceFolder}/node_modules/*",
+        "webpack:///./*": "${workspaceFolder}/apps/portal-web/*",
+        "webpack:///src/*": "${workspaceFolder}/apps/portal-web/src/*",
+        "webpack:///*": "*"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug API Server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "server-fastify.js"
+      ],
+      "cwd": "${workspaceFolder}/../protocolsync-api",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": ["Debug Portal Web (Chrome)", "Debug API Server"],
+      "stopAll": true
+    }
+  ]
+}

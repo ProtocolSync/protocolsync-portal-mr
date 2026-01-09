@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNotify } from 'react-admin';
 import { useUser } from '../contexts/UserContext';
-import { useMsal } from '@azure/msal-react';
+import { sitesService } from '../apiClient';
 import {
   CModal,
   CModalHeader,
@@ -34,11 +34,8 @@ interface AddSiteModalProps {
   onSuccess: () => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
 export const AddSiteModal = ({ visible, onClose, onSuccess }: AddSiteModalProps) => {
   const { user } = useUser();
-  const { instance } = useMsal();
   const notify = useNotify();
   const [formData, setFormData] = useState<SiteFormData>({
     site_number: '',
@@ -53,22 +50,6 @@ export const AddSiteModal = ({ visible, onClose, onSuccess }: AddSiteModalProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getAuthToken = async () => {
-    const accounts = instance.getAllAccounts();
-    if (accounts.length === 0) return '';
-    
-    try {
-      const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
-        account: accounts[0]
-      });
-      return tokenResponse.accessToken;
-    } catch (error) {
-      console.error('Failed to acquire token:', error);
-      return '';
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -81,40 +62,21 @@ export const AddSiteModal = ({ visible, onClose, onSuccess }: AddSiteModalProps)
     setError(null);
 
     try {
-      const token = await getAuthToken();
       const companyId = user.company.id;
-      
-      const requestBody = {
-        ...formData,
-        created_by_user_id: user.id
-      };
-      
+
       console.log('[AddSiteModal] Creating site for company:', companyId);
-      console.log('[AddSiteModal] Request body:', requestBody);
-      
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
+      console.log('[AddSiteModal] Request body:', formData);
 
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/companies/${companyId}/sites`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody)
+      const response = await sitesService.createSite(companyId, {
+        ...formData,
+        created_by_user_id: parseInt(user.id)
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to create site' }));
-        throw new Error(errorData.error || `Failed to create site (${response.status})`);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create site');
       }
-      
-      const result = await response.json();
-      console.log('[AddSiteModal] Site created:', result);
+
+      console.log('[AddSiteModal] Site created:', response.data);
       
       notify(`Site ${formData.site_name} created successfully.`, { type: 'success' });
       setFormData({

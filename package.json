@@ -13,6 +13,7 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "dev:web": "turbo run dev --filter=protocolsync-portal",
+    "dev:mobile": "cd apps/portal-mobile && npm start",
     "build:web": "turbo run build --filter=protocolsync-portal",
     "clean": "turbo run clean && rm -rf node_modules",
     "typecheck": "turbo run typecheck"

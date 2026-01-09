@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "portal-mobile",
+    "slug": "portal-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "apiUrl": "http://localhost:3000/api/v1",
+      "apiKey": "ps_3860279e30a2f9e4edc356f11de40ab66c849a02e26434b6076e70053dfa6127",
+      "azureClientId": "65b5eddd-4d68-421e-97a1-65399bfb4a48",
+      "azureTenantId": "0ed0888e-3a5b-42f0-8ceb-bab9e938f05d",
+      "websiteUrl": "http://localhost:5174"
+    }
+  }
+}
