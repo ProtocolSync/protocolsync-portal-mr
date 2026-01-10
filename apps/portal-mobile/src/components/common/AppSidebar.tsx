@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
+import { HelpChatModal } from './HelpChatModal';
 import designTokens from '../../design-tokens.json';
 
 export const AppSidebar = (props: DrawerContentComponentProps) => {
   const { user } = useAuth();
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
 
   // Navigation items based on role
   const getNavigationItems = () => {
@@ -23,6 +25,7 @@ export const AppSidebar = (props: DrawerContentComponentProps) => {
         { label: 'Users', icon: '👥', screen: 'Users', section: 'MANAGEMENT' },
         { label: 'Reports', icon: '📊', screen: 'Reports', section: 'COMPLIANCE' },
         { label: 'Billing', icon: '💳', screen: 'Billing', section: 'ACCOUNT' },
+        { label: 'Help', icon: '❓', screen: 'Help', section: 'ACCOUNT' },
       ];
     }
 
@@ -32,6 +35,7 @@ export const AppSidebar = (props: DrawerContentComponentProps) => {
         { label: 'Manage Trials', icon: '🔬', screen: 'Trials', section: 'TRIALS' },
         { label: 'Site Users', icon: '👥', screen: 'SiteUsers', section: 'MANAGEMENT' },
         { label: 'Reports', icon: '📊', screen: 'Reports', section: 'COMPLIANCE' },
+        { label: 'Help', icon: '❓', screen: 'Help', section: 'ACCOUNT' },
       ];
     }
 
@@ -40,6 +44,7 @@ export const AppSidebar = (props: DrawerContentComponentProps) => {
         ...commonItems,
         { label: 'Protocol Versions', icon: '📄', screen: 'Protocols', section: 'TRIAL MANAGEMENT' },
         { label: 'Delegation Log', icon: '📋', screen: 'DelegationLog', section: 'TRIAL MANAGEMENT' },
+        { label: 'Help', icon: '❓', screen: 'Help', section: 'ACCOUNT' },
       ];
     }
 
@@ -47,6 +52,7 @@ export const AppSidebar = (props: DrawerContentComponentProps) => {
     return [
       ...commonItems,
       { label: 'My Protocols', icon: '📄', screen: 'MyProtocols', section: 'PROTOCOLS' },
+      { label: 'Help', icon: '❓', screen: 'Help', section: 'ACCOUNT' },
     ];
   };
 
@@ -89,7 +95,12 @@ export const AppSidebar = (props: DrawerContentComponentProps) => {
                   props.state.routeNames[props.state.index] === item.screen && styles.navItemActive,
                 ]}
                 onPress={() => {
-                  props.navigation.navigate(item.screen as any);
+                  if (item.screen === 'Help') {
+                    setHelpModalVisible(true);
+                    props.navigation.closeDrawer();
+                  } else {
+                    props.navigation.navigate(item.screen as any);
+                  }
                 }}
               >
                 <Text style={styles.navIcon}>{item.icon}</Text>
@@ -116,6 +127,12 @@ export const AppSidebar = (props: DrawerContentComponentProps) => {
           <Text style={styles.footerLink}>Privacy Policy</Text>
         </View>
       </View>
+
+      {/* Help Chat Modal */}
+      <HelpChatModal
+        visible={helpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
     </View>
   );
 };

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Menu, IconButton } from 'react-native-paper';
+import { Menu } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
-import { HelpChatModal } from './HelpChatModal';
 import designTokens from '../../design-tokens.json';
 
 interface AppHeaderProps {
@@ -12,7 +11,6 @@ interface AppHeaderProps {
 export const AppHeader = ({ onMenuPress }: AppHeaderProps) => {
   const { user, logout } = useAuth();
   const [roleMenuVisible, setRoleMenuVisible] = useState(false);
-  const [helpModalVisible, setHelpModalVisible] = useState(false);
 
   // Role display mapping
   const roleLabels: Record<string, string> = {
@@ -97,25 +95,11 @@ export const AppHeader = ({ onMenuPress }: AppHeaderProps) => {
           />
         </Menu>
 
-        {/* Help Button */}
-        <IconButton
-          icon="lifebuoy"
-          size={24}
-          iconColor={designTokens.color.accent.green600}
-          onPress={() => setHelpModalVisible(true)}
-        />
-
         {/* Sign Out Link */}
         <TouchableOpacity onPress={logout}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Help Chat Modal */}
-      <HelpChatModal
-        visible={helpModalVisible}
-        onClose={() => setHelpModalVisible(false)}
-      />
     </View>
   );
 };

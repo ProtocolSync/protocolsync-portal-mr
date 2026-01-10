@@ -8,11 +8,13 @@ import { SiteAdministratorsScreen } from '../screens/SiteAdministratorsScreen';
 import { UsersScreen } from '../screens/UsersScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { BillingScreen } from '../screens/BillingScreen';
+import { HelpScreen } from '../screens/HelpScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Text } from 'react-native';
 import { AppHeader } from '../components/common/AppHeader';
 import { AppSidebar } from '../components/common/AppSidebar';
+import { FloatingHelpButton } from '../components/common/FloatingHelpButton';
 import designTokens from '../design-tokens.json';
 
 export type RootStackParamList = {
@@ -32,6 +34,7 @@ export type DrawerParamList = {
   MyProtocols: undefined;
   Reports: undefined;
   Billing: undefined;
+  Help: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -39,63 +42,73 @@ const Drawer = createDrawerNavigator<DrawerParamList>();
 
 const DrawerNavigator = () => {
   return (
-    <Drawer.Navigator
-      drawerContent={(props: DrawerContentComponentProps) => <AppSidebar {...props} />}
-      screenOptions={{
-        drawerStyle: {
-          width: 280,
-        },
-        headerShown: true,
-        header: ({ navigation }) => (
-          <AppHeader
-            onMenuPress={() => navigation.toggleDrawer()}
-          />
-        ),
-      }}
-    >
-      <Drawer.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          drawerLabel: 'Dashboard',
+    <View style={{ flex: 1 }}>
+      <Drawer.Navigator
+        drawerContent={(props: DrawerContentComponentProps) => <AppSidebar {...props} />}
+        screenOptions={{
+          drawerStyle: {
+            width: 280,
+          },
+          headerShown: true,
+          header: ({ navigation }) => (
+            <AppHeader
+              onMenuPress={() => navigation.toggleDrawer()}
+            />
+          ),
         }}
-      />
-      <Drawer.Screen
-        name="Sites"
-        component={SitesScreen}
-        options={{
-          drawerLabel: 'Sites',
-        }}
-      />
-      <Drawer.Screen
-        name="Admins"
-        component={SiteAdministratorsScreen}
-        options={{
-          drawerLabel: 'Site Administrators',
-        }}
-      />
-      <Drawer.Screen
-        name="Users"
-        component={UsersScreen}
-        options={{
-          drawerLabel: 'Users',
-        }}
-      />
-      <Drawer.Screen
-        name="Reports"
-        component={ReportsScreen}
-        options={{
-          drawerLabel: 'Reports',
-        }}
-      />
-      <Drawer.Screen
-        name="Billing"
-        component={BillingScreen}
-        options={{
-          drawerLabel: 'Billing',
-        }}
-      />
-    </Drawer.Navigator>
+      >
+        <Drawer.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            drawerLabel: 'Dashboard',
+          }}
+        />
+        <Drawer.Screen
+          name="Sites"
+          component={SitesScreen}
+          options={{
+            drawerLabel: 'Sites',
+          }}
+        />
+        <Drawer.Screen
+          name="Admins"
+          component={SiteAdministratorsScreen}
+          options={{
+            drawerLabel: 'Site Administrators',
+          }}
+        />
+        <Drawer.Screen
+          name="Users"
+          component={UsersScreen}
+          options={{
+            drawerLabel: 'Users',
+          }}
+        />
+        <Drawer.Screen
+          name="Reports"
+          component={ReportsScreen}
+          options={{
+            drawerLabel: 'Reports',
+          }}
+        />
+        <Drawer.Screen
+          name="Billing"
+          component={BillingScreen}
+          options={{
+            drawerLabel: 'Billing',
+          }}
+        />
+        <Drawer.Screen
+          name="Help"
+          component={HelpScreen}
+          options={{
+            drawerLabel: 'Help',
+          }}
+        />
+      </Drawer.Navigator>
+      <FloatingHelpButton />
+    </View>
   );
 };
 

@@ -1,7 +1,7 @@
 {
-  "name": "@protocolsync/monorepo",
+  "name": "@protocolsync/portal-mr",
   "version": "1.0.0",
-  "description": "ProtocolSync - Unified Web & Mobile Portal",
+  "description": "ProtocolSync Portal - Unified Web & Mobile Portal",
   "private": true,
   "workspaces": [
     "packages/*",
