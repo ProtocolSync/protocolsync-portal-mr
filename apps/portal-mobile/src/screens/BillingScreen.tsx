@@ -1,87 +1,45 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { Card, Button, Chip, Divider } from 'react-native-paper';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Linking, Platform } from 'react-native';
+import { Card, Button, Chip } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/apiClient';
+import {
+  billingService,
+  type Subscription,
+  type PaymentMethod,
+  type SubscriptionPlan,
+  type BillingStats,
+  type Invoice
+} from '../services/billingService';
 import { LoadingState } from '../components/common/LoadingState';
-import { ErrorState } from '../components/common/ErrorState';
 import { AppFooter } from '../components/common/AppFooter';
+import { PaymentMethodForm } from '../components/PaymentMethodForm';
 import designTokens from '../design-tokens.json';
-
-interface Subscription {
-  subscription_id: number;
-  plan_name: string;
-  display_name: string;
-  monthly_price: number;
-  status: 'active' | 'trialing' | 'canceled' | 'past_due';
-  current_period_start: string;
-  current_period_end: string;
-  cancel_at_period_end: boolean;
-}
-
-interface PaymentMethod {
-  payment_method_id: number;
-  card_brand: string;
-  card_last4: string;
-  card_exp_month: number;
-  card_exp_year: number;
-  is_default: boolean;
-}
-
-interface Invoice {
-  invoice_id: number;
-  amount: number;
-  status: 'paid' | 'pending' | 'failed' | 'void';
-  invoice_pdf_url: string;
-  period_start: string;
-  period_end: string;
-}
 
 export const BillingScreen = () => {
   const { user } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'payment' | 'invoices'>('overview');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'payment' | 'invoices'>('overview');
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [stats, setStats] = useState<BillingStats>({ activeSites: 0, siteAdmins: 0, activeTrials: 0 });
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const fetchBillingData = useCallback(async () => {
     try {
-      setError(null);
       const companyId = user?.company?.id;
+      if (!companyId) return;
 
-      if (!companyId) {
-        setError('Company information not available');
-        return;
-      }
+      const data = await billingService.getAllBillingData(Number(companyId));
 
-      // Fetch subscription
-      const subResponse = await api.get<{ subscription: Subscription }>(
-        `/companies/${companyId}/subscription`
-      );
-      if (subResponse.success && subResponse.data) {
-        setSubscription(subResponse.data.subscription);
-      }
-
-      // Fetch payment methods
-      const pmResponse = await api.get<{ payment_methods: PaymentMethod[] }>(
-        `/companies/${companyId}/payment-methods`
-      );
-      if (pmResponse.success && pmResponse.data) {
-        setPaymentMethods(pmResponse.data.payment_methods || []);
-      }
-
-      // Fetch invoices
-      const invResponse = await api.get<{ invoices: Invoice[] }>(
-        `/companies/${companyId}/invoices?limit=10`
-      );
-      if (invResponse.success && invResponse.data) {
-        setInvoices(invResponse.data.invoices || []);
-      }
+      setSubscription(data.subscription);
+      setPaymentMethods(data.paymentMethods);
+      setPlans(data.plans);
+      setStats(data.stats);
+      setInvoices(data.invoices);
     } catch (err) {
-      setError('Failed to load billing information');
+      console.error('Error fetching billing data:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -97,36 +55,45 @@ export const BillingScreen = () => {
     fetchBillingData();
   }, [fetchBillingData]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount / 100);
-  };
+  const getTierColor = (planName?: string) => {
+    if (!planName) return { bg: designTokens.color.background.page, text: designTokens.color.text.subtle };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-      case 'paid':
-        return '#D1FAE5';
-      case 'trialing':
-      case 'pending':
-        return '#FEF3C7';
-      case 'canceled':
-      case 'failed':
-      case 'past_due':
-        return '#FEE2E2';
+    switch (planName.toLowerCase()) {
+      case 'starter':
+        return { bg: '#dbeafe', text: '#1e40af' };
+      case 'professional':
+        return { bg: designTokens.color.accent.green100, text: designTokens.color.brand.primary };
+      case 'growth':
+        return { bg: designTokens.color.background.focus, text: designTokens.color.brand.primary };
+      case 'pilot':
+        return { bg: '#fce7f3', text: '#831843' };
       default:
-        return '#F3F4F6';
+        return { bg: designTokens.color.background.page, text: designTokens.color.text.subtle };
     }
   };
 
+  const getStatusColor = (status?: string) => {
+    if (!status) return { bg: designTokens.color.background.page, text: designTokens.color.text.subtle };
+
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return { bg: designTokens.color.accent.green100, text: designTokens.color.accent.green700 };
+      case 'pending':
+      case 'open':
+        return { bg: '#fef3c7', text: '#92400e' };
+      case 'failed':
+      case 'void':
+        return { bg: '#fee2e2', text: designTokens.color.text.error };
+      default:
+        return { bg: designTokens.color.background.page, text: designTokens.color.text.subtle };
+    }
+  };
+
+  const defaultPaymentMethod = paymentMethods.find(pm => pm.is_default);
+  const tierColors = subscription?.plan_name ? getTierColor(subscription.plan_name) : { bg: '#f3f4f6', text: '#374151' };
+
   if (loading && !refreshing) {
     return <LoadingState message="Loading billing information..." />;
-  }
-
-  if (error && !refreshing) {
-    return <ErrorState message={error} onRetry={fetchBillingData} />;
   }
 
   return (
@@ -142,178 +109,340 @@ export const BillingScreen = () => {
         }
       >
         <View style={styles.content}>
-        {/* Tab Navigation */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
-            onPress={() => setActiveTab('overview')}
-          >
-            <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
-              Overview
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'payment' && styles.tabActive]}
-            onPress={() => setActiveTab('payment')}
-          >
-            <Text style={[styles.tabText, activeTab === 'payment' && styles.tabTextActive]}>
-              Payment
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'invoices' && styles.tabActive]}
-            onPress={() => setActiveTab('invoices')}
-          >
-            <Text style={[styles.tabText, activeTab === 'invoices' && styles.tabTextActive]}>
-              Invoices
-            </Text>
-          </TouchableOpacity>
-        </View>
+          {/* Page Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Billing & Subscription</Text>
+            <Text style={styles.subtitle}>Manage your subscription and payment methods</Text>
+          </View>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && subscription && (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text style={styles.cardTitle}>Current Subscription</Text>
-
-              <View style={styles.subscriptionHeader}>
-                <Text style={styles.planName}>{subscription.display_name}</Text>
-                <Chip
-                  style={[styles.statusChip, { backgroundColor: getStatusColor(subscription.status) }]}
-                  textStyle={styles.statusText}
-                >
-                  {subscription.status.toUpperCase()}
-                </Chip>
-              </View>
-
-              <Text style={styles.price}>
-                {formatCurrency(subscription.monthly_price)}/month
-              </Text>
-
-              <Divider style={styles.divider} />
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Current Period</Text>
-                <Text style={styles.detailValue}>
-                  {new Date(subscription.current_period_start).toLocaleDateString()} -{' '}
-                  {new Date(subscription.current_period_end).toLocaleDateString()}
+          {/* Tab Navigation */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
+            <View style={styles.tabs}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
+                onPress={() => setActiveTab('overview')}
+              >
+                <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
+                  Overview
                 </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Next Billing Date</Text>
-                <Text style={styles.detailValue}>
-                  {new Date(subscription.current_period_end).toLocaleDateString()}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'plans' && styles.tabActive]}
+                onPress={() => setActiveTab('plans')}
+              >
+                <Text style={[styles.tabText, activeTab === 'plans' && styles.tabTextActive]}>
+                  Plans
                 </Text>
-              </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'payment' && styles.tabActive]}
+                onPress={() => setActiveTab('payment')}
+              >
+                <Text style={[styles.tabText, activeTab === 'payment' && styles.tabTextActive]}>
+                  Payment
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'invoices' && styles.tabActive]}
+                onPress={() => setActiveTab('invoices')}
+              >
+                <Text style={[styles.tabText, activeTab === 'invoices' && styles.tabTextActive]}>
+                  Invoices
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
 
-              {subscription.cancel_at_period_end && (
-                <Card style={styles.warningCard}>
-                  <Card.Content>
-                    <Text style={styles.warningText}>
-                      ⚠️ Your subscription will be canceled at the end of the current billing period.
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <View>
+              {/* Current Subscription Card */}
+              <Card style={styles.card}>
+                <Card.Content>
+                  <Text style={styles.cardTitle}>Current Subscription</Text>
+
+                  <View style={styles.subscriptionHeader}>
+                    <Chip
+                      style={[styles.planChip, { backgroundColor: tierColors.bg }]}
+                      textStyle={[styles.planChipText, { color: tierColors.text }]}
+                    >
+                      {subscription?.display_name || 'No Subscription'}
+                    </Chip>
+                    <Text style={styles.statusText}>
+                      {subscription?.status === 'trialing' ? 'Free Trial' : subscription?.status || 'Inactive'}
                     </Text>
+                  </View>
+
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.price}>${subscription?.monthly_price || 0}</Text>
+                    <Text style={styles.priceUnit}>/mo</Text>
+                  </View>
+
+                  <Text style={styles.nextBilling}>
+                    {subscription?.current_period_end
+                      ? `Next billing: ${new Date(subscription.current_period_end).toLocaleDateString()}`
+                      : 'No active subscription'}
+                  </Text>
+
+                  <Button
+                    mode="outlined"
+                    onPress={() => {}}
+                    style={styles.changeButton}
+                    textColor={designTokens.color.brand.primary}
+                  >
+                    {subscription ? 'Change Plan' : 'Start Trial'}
+                  </Button>
+
+                  {subscription?.cancel_at_period_end && (
+                    <View style={styles.warningBox}>
+                      <Text style={styles.warningText}>
+                        ⚠️ Subscription will be canceled on {new Date(subscription.current_period_end).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  )}
+                </Card.Content>
+              </Card>
+
+              {/* Payment Method Card */}
+              <Card style={styles.card}>
+                <Card.Content>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>Payment Method</Text>
+                    <Button
+                      mode="outlined"
+                      onPress={() => setActiveTab('payment')}
+                      compact
+                      textColor={designTokens.color.brand.primary}
+                    >
+                      {defaultPaymentMethod ? 'Update' : 'Add'}
+                    </Button>
+                  </View>
+
+                  {defaultPaymentMethod ? (
+                    <View style={styles.paymentMethodDisplay}>
+                      <View style={styles.cardBrandBox}>
+                        <Text style={styles.cardBrandText}>
+                          {defaultPaymentMethod.card_brand.toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.cardDetails}>
+                        <Text style={styles.cardNumber}>
+                          •••• •••• •••• {defaultPaymentMethod.card_last4}
+                        </Text>
+                        <Text style={styles.cardExpiry}>
+                          Expires {defaultPaymentMethod.card_exp_month}/{defaultPaymentMethod.card_exp_year}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={styles.emptyText}>No payment method on file</Text>
+                  )}
+                </Card.Content>
+              </Card>
+
+              {/* Usage Stats */}
+              <View style={styles.statsGrid}>
+                <Card style={styles.statCard}>
+                  <Card.Content>
+                    <Text style={styles.statLabel}>Active Sites</Text>
+                    <Text style={styles.statValue}>{stats.activeSites}</Text>
+                  </Card.Content>
+                </Card>
+
+                <Card style={styles.statCard}>
+                  <Card.Content>
+                    <Text style={styles.statLabel}>Site Administrators</Text>
+                    <Text style={styles.statValue}>{stats.siteAdmins}</Text>
+                  </Card.Content>
+                </Card>
+
+                <Card style={styles.statCard}>
+                  <Card.Content>
+                    <Text style={styles.statLabel}>Active Trials</Text>
+                    <Text style={styles.statValue}>{stats.activeTrials}</Text>
+                  </Card.Content>
+                </Card>
+              </View>
+            </View>
+          )}
+
+          {/* Plans Tab */}
+          {activeTab === 'plans' && (
+            <View>
+              <Card style={styles.card}>
+                <Card.Content>
+                  <Text style={styles.cardTitle}>Choose Your Plan</Text>
+                </Card.Content>
+              </Card>
+
+              {plans.map(plan => {
+                const isCurrentPlan = subscription?.plan_name === plan.plan_name;
+                const planColor = getTierColor(plan.plan_name);
+
+                return (
+                  <Card
+                    key={plan.plan_id}
+                    style={[
+                      styles.planCard,
+                      isCurrentPlan && { borderWidth: 2, borderColor: designTokens.color.accent.green600 }
+                    ]}
+                  >
+                    <Card.Content>
+                      <Text style={styles.planName}>{plan.display_name}</Text>
+
+                      <View style={styles.planPriceContainer}>
+                        {plan.monthly_price > 0 ? (
+                          <>
+                            <Text style={styles.planPrice}>${plan.monthly_price}</Text>
+                            <Text style={styles.planPriceUnit}>/mo</Text>
+                          </>
+                        ) : (
+                          <Text style={styles.planPriceCustom}>Custom Pricing</Text>
+                        )}
+                      </View>
+
+                      {plan.features.features_list && (
+                        <View style={styles.featuresList}>
+                          {plan.features.features_list.map((feature, idx) => (
+                            <Text key={idx} style={styles.featureItem}>
+                              ✓ {feature}
+                            </Text>
+                          ))}
+                        </View>
+                      )}
+
+                      <Button
+                        mode="contained"
+                        onPress={() => {}}
+                        disabled={isCurrentPlan}
+                        style={styles.subscribeButton}
+                        buttonColor={isCurrentPlan ? designTokens.color.text.subtle : designTokens.color.accent.green600}
+                      >
+                        {isCurrentPlan ? 'Current Plan' : 'Subscribe'}
+                      </Button>
+
+                      {plan.monthly_price > 0 && !subscription && (
+                        <Text style={styles.trialText}>14-day free trial</Text>
+                      )}
+                    </Card.Content>
+                  </Card>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Payment Tab */}
+          {activeTab === 'payment' && (
+            <View>
+              {/* Existing Payment Methods */}
+              {paymentMethods.length > 0 && (
+                <Card style={styles.card}>
+                  <Card.Content>
+                    <Text style={styles.cardTitle}>Your Payment Methods</Text>
+                    {paymentMethods.map((pm) => (
+                      <View key={pm.payment_method_id} style={styles.paymentMethodRow}>
+                        <View style={styles.paymentMethodDisplay}>
+                          <View style={styles.cardBrandBox}>
+                            <Text style={styles.cardBrandText}>
+                              {pm.card_brand.toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={styles.cardDetails}>
+                            <Text style={styles.cardNumber}>
+                              •••• •••• •••• {pm.card_last4}
+                            </Text>
+                            <Text style={styles.cardExpiry}>
+                              Expires {pm.card_exp_month}/{pm.card_exp_year}
+                            </Text>
+                          </View>
+                        </View>
+                        {pm.is_default && (
+                          <Chip
+                            style={styles.defaultChip}
+                            textStyle={styles.defaultChipText}
+                          >
+                            Default
+                          </Chip>
+                        )}
+                      </View>
+                    ))}
                   </Card.Content>
                 </Card>
               )}
 
-              <Button
-                mode="outlined"
-                onPress={() => {/* TODO: Manage subscription */}}
-                style={styles.button}
-              >
-                Manage Subscription
-              </Button>
-            </Card.Content>
-          </Card>
-        )}
+              {/* Add New Payment Method */}
+              <Card style={styles.card}>
+                <Card.Content>
+                  <Text style={styles.cardTitle}>
+                    {paymentMethods.length > 0 ? 'Add New Card' : 'Add Payment Method'}
+                  </Text>
+                  <PaymentMethodForm
+                    onSuccess={() => {
+                      // Refresh billing data to show new payment method
+                      fetchBillingData();
+                      // Optionally switch back to overview tab
+                      setActiveTab('overview');
+                    }}
+                  />
+                </Card.Content>
+              </Card>
+            </View>
+          )}
 
-        {/* Payment Tab */}
-        {activeTab === 'payment' && (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text style={styles.cardTitle}>Payment Methods</Text>
+          {/* Invoices Tab */}
+          {activeTab === 'invoices' && (
+            <Card style={styles.card}>
+              <Card.Content>
+                <Text style={styles.cardTitle}>Invoice History</Text>
 
-              {paymentMethods.length === 0 ? (
-                <Text style={styles.emptyText}>No payment methods on file</Text>
-              ) : (
-                paymentMethods.map(pm => (
-                  <View key={pm.payment_method_id} style={styles.paymentMethod}>
-                    <View style={styles.paymentMethodInfo}>
-                      <Text style={styles.cardBrand}>{pm.card_brand.toUpperCase()}</Text>
-                      <Text style={styles.cardNumber}>•••• {pm.card_last4}</Text>
-                      <Text style={styles.cardExpiry}>
-                        Expires {pm.card_exp_month}/{pm.card_exp_year}
-                      </Text>
-                    </View>
-                    {pm.is_default && (
-                      <Chip style={styles.defaultChip} textStyle={styles.defaultChipText}>
-                        Default
-                      </Chip>
-                    )}
+                {invoices.length > 0 ? (
+                  <View>
+                    {invoices.map((invoice) => {
+                      const statusColors = getStatusColor(invoice.status);
+                      return (
+                        <View key={invoice.invoice_id} style={styles.invoiceRow}>
+                          <View style={styles.invoiceLeft}>
+                            <Text style={styles.invoiceNumber}>{invoice.invoice_number}</Text>
+                            <Text style={styles.invoiceDate}>
+                              {new Date(invoice.created_at).toLocaleDateString()}
+                            </Text>
+                          </View>
+                          <View style={styles.invoiceRight}>
+                            <Text style={styles.invoiceAmount}>${invoice.amount}</Text>
+                            <Chip
+                              style={[styles.statusChip, { backgroundColor: statusColors.bg }]}
+                              textStyle={[styles.statusChipText, { color: statusColors.text }]}
+                            >
+                              {invoice.status}
+                            </Chip>
+                            {invoice.invoice_pdf_url && (
+                              <Button
+                                mode="outlined"
+                                onPress={async () => {
+                                  // Open PDF in browser (cross-platform)
+                                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                                    window.open(invoice.invoice_pdf_url, '_blank');
+                                  } else {
+                                    await Linking.openURL(invoice.invoice_pdf_url);
+                                  }
+                                }}
+                                compact
+                                style={styles.downloadButton}
+                              >
+                                Download
+                              </Button>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
-                ))
-              )}
-
-              <Button
-                mode="contained"
-                onPress={() => {/* TODO: Add payment method */}}
-                style={styles.button}
-                buttonColor={designTokens.color.accent.green600}
-              >
-                Add Payment Method
-              </Button>
-            </Card.Content>
-          </Card>
-        )}
-
-        {/* Invoices Tab */}
-        {activeTab === 'invoices' && (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text style={styles.cardTitle}>Recent Invoices</Text>
-
-              {invoices.length === 0 ? (
-                <Text style={styles.emptyText}>No invoices available</Text>
-              ) : (
-                invoices.map(invoice => (
-                  <TouchableOpacity
-                    key={invoice.invoice_id}
-                    style={styles.invoiceItem}
-                    onPress={() => {/* TODO: Download invoice */}}
-                  >
-                    <View style={styles.invoiceInfo}>
-                      <Text style={styles.invoiceDate}>
-                        {new Date(invoice.period_start).toLocaleDateString()}
-                      </Text>
-                      <Text style={styles.invoiceAmount}>
-                        {formatCurrency(invoice.amount)}
-                      </Text>
-                    </View>
-                    <Chip
-                      style={[styles.statusChip, { backgroundColor: getStatusColor(invoice.status) }]}
-                      textStyle={styles.statusText}
-                    >
-                      {invoice.status.toUpperCase()}
-                    </Chip>
-                  </TouchableOpacity>
-                ))
-              )}
-            </Card.Content>
-          </Card>
-        )}
-
-        {/* Support Info */}
-        <Card style={styles.infoCard}>
-          <Card.Content>
-            <Text style={styles.infoTitle}>💳 Billing Support</Text>
-            <Text style={styles.infoText}>
-              Have questions about your billing?{'\n'}
-              Contact us at support@protocolsync.org
-            </Text>
-          </Card.Content>
-        </Card>
-
+                ) : (
+                  <Text style={styles.emptyText}>No invoices found</Text>
+                )}
+              </Card.Content>
+            </Card>
+          )}
         </View>
       </ScrollView>
       <AppFooter />
@@ -332,17 +461,32 @@ const styles = StyleSheet.create({
   content: {
     padding: designTokens.spacing.m,
   },
+  header: {
+    marginBottom: designTokens.spacing.l,
+  },
+  title: {
+    fontSize: designTokens.typography.fontSize.xxl,
+    fontWeight: '700' as const,
+    color: designTokens.color.text.heading,
+    marginBottom: designTokens.spacing.xs,
+  },
+  subtitle: {
+    fontSize: designTokens.typography.fontSize.m,
+    color: designTokens.color.text.subtle,
+  },
+  tabsScroll: {
+    marginBottom: designTokens.spacing.m,
+  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderRadius: designTokens.spacing.s,
-    marginBottom: designTokens.spacing.m,
     borderWidth: 1,
     borderColor: designTokens.color.border.subtle,
   },
   tab: {
-    flex: 1,
     paddingVertical: designTokens.spacing.m,
+    paddingHorizontal: designTokens.spacing.l,
     alignItems: 'center',
   },
   tabActive: {
@@ -359,144 +503,240 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    marginBottom: designTokens.spacing.m,
     backgroundColor: '#FFFFFF',
+    marginBottom: designTokens.spacing.m,
   },
   cardTitle: {
-    fontSize: designTokens.typography.fontSize.xl,
+    fontSize: designTokens.typography.fontSize.l,
     fontWeight: '600',
     color: designTokens.color.text.heading,
+    marginBottom: designTokens.spacing.m,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: designTokens.spacing.m,
   },
   subscriptionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: designTokens.spacing.s,
-  },
-  planName: {
-    fontSize: designTokens.typography.fontSize.l,
-    fontWeight: '600',
-    color: designTokens.color.text.heading,
-    flex: 1,
-  },
-  statusChip: {
-    height: 24,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  price: {
-    fontSize: designTokens.typography.fontSize.xl,
-    fontWeight: '700',
-    color: designTokens.color.accent.green600,
-    marginBottom: designTokens.spacing.l,
-  },
-  divider: {
-    marginVertical: designTokens.spacing.m,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: designTokens.spacing.s,
-  },
-  detailLabel: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.subtle,
-  },
-  detailValue: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.body,
-    fontWeight: '500',
-  },
-  warningCard: {
-    backgroundColor: '#FEF3C7',
-    marginTop: designTokens.spacing.m,
-  },
-  warningText: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: '#92400E',
-  },
-  button: {
-    marginTop: designTokens.spacing.l,
-  },
-  emptyText: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.subtle,
-    textAlign: 'center',
-    paddingVertical: designTokens.spacing.xl,
-  },
-  paymentMethod: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: designTokens.spacing.m,
-    backgroundColor: designTokens.color.background.subtle,
-    borderRadius: designTokens.spacing.s,
+    gap: designTokens.spacing.m,
     marginBottom: designTokens.spacing.m,
   },
-  paymentMethodInfo: {
-    flex: 1,
+  planChip: {
+    height: 28,
   },
-  cardBrand: {
-    fontSize: designTokens.typography.fontSize.s,
+  planChipText: {
+    fontSize: 13,
     fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  statusText: {
+    fontSize: designTokens.typography.fontSize.s,
+    color: designTokens.color.text.subtle,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: designTokens.spacing.xs,
+  },
+  price: {
+    fontSize: 48,
+    fontWeight: '700' as const,
     color: designTokens.color.text.heading,
-    marginBottom: 2,
+  },
+  priceUnit: {
+    fontSize: designTokens.typography.fontSize.l,
+    color: designTokens.color.text.subtle,
+    marginLeft: 4,
+  },
+  nextBilling: {
+    fontSize: designTokens.typography.fontSize.s,
+    color: designTokens.color.text.subtle,
+    marginBottom: designTokens.spacing.m,
+  },
+  changeButton: {
+    borderColor: designTokens.color.brand.primary,
+  },
+  warningBox: {
+    backgroundColor: '#fef3c7',
+    borderRadius: designTokens.spacing.s,
+    padding: designTokens.spacing.m,
+    marginTop: designTokens.spacing.m,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  warningText: {
+    fontSize: designTokens.typography.fontSize.s,
+    color: '#92400e',
+  },
+  paymentMethodDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.m,
+  },
+  cardBrandBox: {
+    width: 48,
+    height: 32,
+    backgroundColor: designTokens.color.brand.primary,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardBrandText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  cardDetails: {
+    flex: 1,
   },
   cardNumber: {
     fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.body,
-    marginBottom: 2,
+    fontWeight: '600',
+    color: designTokens.color.text.heading,
+    marginBottom: 4,
   },
   cardExpiry: {
     fontSize: designTokens.typography.fontSize.s,
     color: designTokens.color.text.subtle,
   },
+  emptyText: {
+    fontSize: designTokens.typography.fontSize.s,
+    color: designTokens.color.text.subtle,
+  },
+  statsGrid: {
+    gap: designTokens.spacing.m,
+  },
+  statCard: {
+    backgroundColor: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: designTokens.typography.fontSize.s,
+    color: designTokens.color.text.subtle,
+    marginBottom: designTokens.spacing.xs,
+  },
+  statValue: {
+    fontSize: 48,
+    fontWeight: '700' as const,
+    color: designTokens.color.text.heading,
+  },
+  supportCard: {
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  cardText: {
+    fontSize: designTokens.typography.fontSize.m,
+    color: designTokens.color.text.body,
+    lineHeight: 22,
+  },
+  planCard: {
+    backgroundColor: '#FFFFFF',
+    marginBottom: designTokens.spacing.m,
+  },
+  planName: {
+    fontSize: designTokens.typography.fontSize.l,
+    fontWeight: '700' as const,
+    color: designTokens.color.text.heading,
+    marginBottom: designTokens.spacing.m,
+  },
+  planPriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: designTokens.spacing.m,
+  },
+  planPrice: {
+    fontSize: 40,
+    fontWeight: '700' as const,
+    color: designTokens.color.text.heading,
+  },
+  planPriceUnit: {
+    fontSize: designTokens.typography.fontSize.l,
+    color: designTokens.color.text.subtle,
+    marginLeft: 4,
+  },
+  planPriceCustom: {
+    fontSize: designTokens.typography.fontSize.l,
+    color: designTokens.color.text.subtle,
+  },
+  featuresList: {
+    marginBottom: designTokens.spacing.l,
+  },
+  featureItem: {
+    fontSize: designTokens.typography.fontSize.s,
+    color: designTokens.color.text.body,
+    marginBottom: designTokens.spacing.xs,
+  },
+  subscribeButton: {
+    marginTop: designTokens.spacing.s,
+  },
+  trialText: {
+    fontSize: designTokens.typography.fontSize.xxs,
+    color: designTokens.color.text.subtle,
+    textAlign: 'center',
+    marginTop: designTokens.spacing.xs,
+  },
+  paymentMethodRow: {
+    marginBottom: designTokens.spacing.m,
+    paddingBottom: designTokens.spacing.m,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.color.border.subtle,
+  },
   defaultChip: {
-    backgroundColor: designTokens.color.accent.green600,
+    backgroundColor: designTokens.color.accent.green100,
+    marginTop: designTokens.spacing.xs,
+    alignSelf: 'flex-start',
   },
   defaultChipText: {
-    color: '#FFFFFF',
-    fontSize: 11,
+    color: designTokens.color.accent.green600,
+    fontSize: 12,
     fontWeight: '600',
   },
-  invoiceItem: {
+  invoiceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: designTokens.spacing.m,
-    backgroundColor: designTokens.color.background.subtle,
-    borderRadius: designTokens.spacing.s,
-    marginBottom: designTokens.spacing.m,
+    paddingVertical: designTokens.spacing.m,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.color.border.light,
+    marginBottom: designTokens.spacing.s,
   },
-  invoiceInfo: {
+  invoiceLeft: {
     flex: 1,
   },
-  invoiceDate: {
+  invoiceNumber: {
     fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.body,
-    marginBottom: 2,
+    fontWeight: '600',
+    color: designTokens.color.text.heading,
+    marginBottom: 4,
+  },
+  invoiceDate: {
+    fontSize: designTokens.typography.fontSize.s,
+    color: designTokens.color.text.subtle,
+  },
+  invoiceRight: {
+    alignItems: 'flex-end',
+    gap: designTokens.spacing.xs,
   },
   invoiceAmount: {
     fontSize: designTokens.typography.fontSize.l,
     fontWeight: '600',
     color: designTokens.color.text.heading,
+    marginBottom: 4,
   },
-  infoCard: {
-    backgroundColor: '#F0F9FF',
-    marginTop: designTokens.spacing.m,
+  statusChip: {
+    height: 24,
+    marginBottom: 4,
   },
-  infoTitle: {
-    fontSize: designTokens.typography.fontSize.l,
+  statusChipText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: designTokens.color.text.heading,
-    marginBottom: designTokens.spacing.s,
+    textTransform: 'capitalize',
   },
-  infoText: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.body,
-    lineHeight: 22,
+  downloadButton: {
+    borderColor: designTokens.color.brand.primary,
+    minWidth: 80,
   },
 });

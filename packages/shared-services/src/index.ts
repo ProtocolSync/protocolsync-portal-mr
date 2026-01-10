@@ -8,3 +8,14 @@ export type { Site, CreateSiteData, UpdateSiteStatusData, AddSiteAdministratorDa
 
 export { UsersService } from './services/UsersService';
 export type { CompanyUser, CreateUserData, UpdateUserData } from './services/UsersService';
+
+export { HelpChatService } from './services/HelpChatService';
+export type {
+  HelpMessage,
+  HelpMessageSource,
+  SendMessageRequest,
+  SendMessageResponse,
+  ConversationHistoryResponse,
+  EscalationRequest,
+  EscalationResponse
+} from './services/HelpChatService';

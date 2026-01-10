@@ -8,7 +8,6 @@ import { SiteAdministratorsScreen } from '../screens/SiteAdministratorsScreen';
 import { UsersScreen } from '../screens/UsersScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { BillingScreen } from '../screens/BillingScreen';
-import { HelpScreen } from '../screens/HelpScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Text } from 'react-native';
@@ -33,7 +32,6 @@ export type DrawerParamList = {
   MyProtocols: undefined;
   Reports: undefined;
   Billing: undefined;
-  Help: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -95,13 +93,6 @@ const DrawerNavigator = () => {
         component={BillingScreen}
         options={{
           drawerLabel: 'Billing',
-        }}
-      />
-      <Drawer.Screen
-        name="Help"
-        component={HelpScreen}
-        options={{
-          drawerLabel: 'Help',
         }}
       />
     </Drawer.Navigator>
