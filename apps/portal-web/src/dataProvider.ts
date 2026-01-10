@@ -206,17 +206,35 @@ export const protocolSyncProvider: DataProvider = {
       const data = await response.json();
       
       console.log(`[DataProvider] Raw response for ${resource}:`, data);
-      
+
       // Handle different response formats from backend
       let items = data;
-      if (data.data) items = data.data; // Backend wraps in { success: true, data: [...] }
-      if (data.documents) items = data.documents; // Some endpoints use { documents: [...] }
-      
+
+      // Check if response has a 'data' property (common wrapper format)
+      if (data.data !== undefined) {
+        items = data.data;
+      }
+      // Some endpoints use { documents: [...] } format
+      else if (data.documents !== undefined) {
+        items = data.documents;
+      }
+      // Some endpoints may use { users: [...] } format
+      else if (data.users !== undefined) {
+        items = data.users;
+      }
+      // Some endpoints may use { sites: [...] } format
+      else if (data.sites !== undefined) {
+        items = data.sites;
+      }
+
       console.log(`[DataProvider] Extracted items for ${resource}:`, items);
-      
+
       // Transform data to ensure each item has an 'id' field
       // React-Admin requires all items to have an id
-      const transformedData = Array.isArray(items) ? items : [items];
+      const transformedData = Array.isArray(items) ? items : (items ? [items] : []);
+
+      console.log(`[DataProvider] Transformed data array for ${resource}:`, transformedData);
+
       const dataWithIds = transformedData.map((item: any, index: number) => {
         // For site-administrators, use site_user_role_id as the unique identifier
         if (resource === 'site-administrators') {
@@ -254,8 +272,16 @@ export const protocolSyncProvider: DataProvider = {
         total: data.total || dataWithIds.length,
       };
     } catch (error) {
-      console.error(`Error fetching ${resource}:`, error);
-      // Return empty data on error
+      console.error(`[DataProvider] Error fetching ${resource}:`, error);
+
+      // Log the full error details for debugging
+      if (error instanceof Error) {
+        console.error(`[DataProvider] Error message:`, error.message);
+        console.error(`[DataProvider] Error stack:`, error.stack);
+      }
+
+      // Return empty data on error to prevent error boundary from triggering
+      // React Admin will handle displaying the error appropriately
       return { data: [], total: 0 };
     }
   },

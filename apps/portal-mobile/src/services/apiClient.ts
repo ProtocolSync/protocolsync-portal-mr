@@ -1,18 +1,33 @@
 /**
  * API Client Instance for Mobile
- * Simple API client without shared services (for now)
+ * Uses shared services for data fetching
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV } from '../config/env';
+import { ApiClient, SitesService, UsersService } from '@protocolsync/shared-services';
+import type { ApiResponse } from '@protocolsync/shared-services';
 
-// Simple API response type
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
+// Re-export ApiResponse type for convenience
+export type { ApiResponse };
+
+// Create API client instance
+const apiClient = new ApiClient({
+  baseUrl: ENV.API_URL,
+  apiKey: ENV.API_KEY,
+  getToken: async () => {
+    const token = await AsyncStorage.getItem('access_token');
+    return token || '';
+  },
+  timeout: 30000,
+});
+
+// Export API client for direct use
+export const api = apiClient;
+
+// Export service instances
+export const sitesService = new SitesService(apiClient);
+export const usersService = new UsersService(apiClient);
 
 // Session management
 export const session = {

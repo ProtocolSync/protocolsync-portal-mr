@@ -36,9 +36,9 @@ export class UsersService {
   async getCompanyUsers(companyId: number | string): Promise<ApiResponse<CompanyUser[]>> {
     const response = await this.apiClient.get<any>(`/companies/${companyId}/users`);
 
-    if (response.success && response.data) {
+    if (response.success && response.data !== undefined) {
       // Handle nested data structure from backend
-      const data = response.data.data || response.data;
+      const data = response.data.data !== undefined ? response.data.data : response.data;
       return {
         success: true,
         data: Array.isArray(data) ? data : [data],
@@ -78,5 +78,18 @@ export class UsersService {
       url += `?user_id=${currentUserId}`;
     }
     return this.apiClient.delete(url);
+  }
+
+  async updateUserStatus(
+    companyId: number | string,
+    userId: number | string,
+    status: 'active' | 'inactive'
+  ): Promise<ApiResponse<CompanyUser>> {
+    return this.apiClient.put<CompanyUser>(`/companies/${companyId}/users/${userId}`, { status });
+  }
+
+  async resendInvitation(userId: number | string): Promise<ApiResponse<any>> {
+    // Note: This endpoint doesn't use /v1 prefix based on web implementation
+    return this.apiClient.post(`/users/${userId}/resend-invitation`, {});
   }
 }

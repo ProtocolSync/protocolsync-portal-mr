@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ScrollView, TextInput, Platform } from 'react-native';
 import { Button, Chip, FAB, Portal, Modal, IconButton, TextInput as PaperTextInput, HelperText } from 'react-native-paper';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useAuth } from '../contexts/AuthContext';
 import { sitesService } from '../services/apiClient';
 import type { Site } from '@protocolsync/shared-services';
@@ -123,12 +125,20 @@ export const SitesScreen = () => {
     setSubmitting(true);
     try {
       const companyId = user?.company?.id;
+      const userId = user?.user_id;
+
       if (!companyId) {
         setError('Company information not available');
         return;
       }
 
-      const response = await sitesService.createSite(companyId, formData);
+      // Add created_by_user_id for 21 CFR Part 11 compliance
+      const siteData = {
+        ...formData,
+        created_by_user_id: userId,
+      };
+
+      const response = await sitesService.createSite(companyId, siteData);
 
       if (response.success) {
         setShowAddModal(false);
@@ -147,6 +157,99 @@ export const SitesScreen = () => {
     setSelectedSite(site);
     setDisableReason('');
     setShowDisableModal(true);
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      console.log('[Export] Starting CSV export for sites');
+      console.log('[Export] Platform:', Platform.OS);
+
+      // Convert sites to CSV format
+      const headers = ['Site Number', 'Site Name', 'Institution', 'City', 'State', 'Country', 'Status', 'PI', 'Active Users', 'Active Trials'];
+      const csvData = sites.map(site => [
+        site.site_number,
+        site.site_name,
+        site.institution_name,
+        site.city,
+        site.state_province,
+        site.country,
+        site.status.toUpperCase(),
+        site.principal_investigator || '',
+        site.active_users?.toString() || '0',
+        site.active_trials?.toString() || '0'
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      console.log('[Export] CSV content created, length:', csvContent.length);
+
+      const fileName = `sites_${new Date().toISOString().split('T')[0]}.csv`;
+
+      // Check if we're on web
+      if (Platform.OS === 'web') {
+        console.log('[Export] Using web download method');
+
+        // Create a blob and download it
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log('[Export] Web download completed');
+        return;
+      }
+
+      // Native platform (iOS/Android)
+      console.log('[Export] Using native file system method');
+
+      // Check if cache directory is available
+      if (!FileSystem.cacheDirectory) {
+        console.error('[Export] Cache directory not available');
+        setError('File system not available');
+        return;
+      }
+
+      // Write CSV to a temporary file
+      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+      console.log('[Export] Writing to file:', fileUri);
+
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      console.log('[Export] File written successfully');
+
+      // Check if sharing is available
+      const sharingAvailable = await Sharing.isAvailableAsync();
+      console.log('[Export] Sharing available:', sharingAvailable);
+
+      if (sharingAvailable) {
+        console.log('[Export] Sharing file...');
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Export Sites',
+          UTI: 'public.comma-separated-values-text',
+        });
+        console.log('[Export] Share completed');
+      } else {
+        console.error('[Export] Sharing not available');
+        setError('Sharing is not available on this device');
+      }
+    } catch (error: any) {
+      console.error('[Export] Error exporting CSV:', error);
+      console.error('[Export] Error message:', error.message);
+      console.error('[Export] Error stack:', error.stack);
+      setError(`Failed to export CSV: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const handleSubmitDisableSite = async () => {
@@ -181,44 +284,51 @@ export const SitesScreen = () => {
 
   const renderSiteCard = ({ item }: { item: Site }) => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardTitleContainer}>
-          <Text style={styles.siteNumber}>#{item.site_number}</Text>
-          <Chip
-            style={[
-              styles.statusChip,
-              item.status === 'active' ? styles.statusActive : styles.statusInactive,
-            ]}
-            textStyle={styles.statusText}
-          >
-            {item.status.toUpperCase()}
-          </Chip>
+      <TouchableOpacity
+        onPress={() => handleSitePress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleContainer}>
+            <Text style={styles.siteNumber}>#{item.site_number}</Text>
+            <Chip
+              style={[
+                styles.statusChip,
+                item.status === 'active' ? styles.statusActive : styles.statusInactive,
+              ]}
+              textStyle={styles.statusText}
+            >
+              {item.status.toUpperCase()}
+            </Chip>
+          </View>
         </View>
-        <View style={styles.cardActions}>
+        <Text style={styles.siteName}>{item.site_name}</Text>
+        <Text style={styles.institution}>{item.institution_name}</Text>
+        <Text style={styles.location}>
+          {item.city}, {item.state_province}, {item.country}
+        </Text>
+        {item.principal_investigator && (
+          <Text style={styles.pi}>PI: {item.principal_investigator}</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Action Icons */}
+      <View style={styles.actions}>
+        <IconButton
+          icon="eye"
+          size={20}
+          iconColor={designTokens.color.accent.green600}
+          onPress={() => handleSitePress(item)}
+        />
+        {user?.role === 'admin' && (
           <IconButton
-            icon="eye"
+            icon={item.status === 'active' ? 'lock' : 'lock-open'}
             size={20}
-            iconColor={designTokens.color.accent.green600}
-            onPress={() => handleSitePress(item)}
+            iconColor={item.status === 'active' ? '#EF4444' : designTokens.color.accent.green600}
+            onPress={() => handleDisableSite(item)}
           />
-          {user?.role === 'admin' && (
-            <IconButton
-              icon={item.status === 'active' ? 'lock' : 'lock-open'}
-              size={20}
-              iconColor={item.status === 'active' ? '#EF4444' : designTokens.color.accent.green600}
-              onPress={() => handleDisableSite(item)}
-            />
-          )}
-        </View>
+        )}
       </View>
-      <Text style={styles.siteName}>{item.site_name}</Text>
-      <Text style={styles.institution}>{item.institution_name}</Text>
-      <Text style={styles.location}>
-        {item.city}, {item.state_province}, {item.country}
-      </Text>
-      {item.principal_investigator && (
-        <Text style={styles.pi}>PI: {item.principal_investigator}</Text>
-      )}
     </View>
   );
 
@@ -239,17 +349,27 @@ export const SitesScreen = () => {
             <Text style={styles.pageTitle}>Trial Sites</Text>
             <Text style={styles.pageSubtitle}>Manage your clinical trial sites</Text>
           </View>
-          {user?.role === 'admin' && (
-            <Button
-              mode="contained"
-              icon="plus"
-              onPress={handleAddSite}
-              style={styles.createButton}
-              buttonColor={designTokens.color.accent.green600}
-            >
-              Create Site
-            </Button>
-          )}
+          <View style={styles.headerActions}>
+            {sites.length > 0 && (
+              <IconButton
+                icon="download"
+                size={24}
+                iconColor={designTokens.color.accent.green600}
+                onPress={handleExportCSV}
+              />
+            )}
+            {user?.role === 'admin' && (
+              <Button
+                mode="contained"
+                icon="plus"
+                onPress={handleAddSite}
+                style={styles.createButton}
+                buttonColor={designTokens.color.accent.green600}
+              >
+                Create Site
+              </Button>
+            )}
+          </View>
         </View>
 
         {sites.length === 0 && !loading && !error ? (
@@ -670,6 +790,11 @@ const styles = StyleSheet.create({
   headerTextContainer: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.s,
+  },
   pageTitle: {
     fontSize: 24,
     fontWeight: '700',
@@ -706,9 +831,13 @@ const styles = StyleSheet.create({
     gap: designTokens.spacing.s,
     flex: 1,
   },
-  cardActions: {
+  actions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: designTokens.spacing.s,
+    borderTopWidth: 1,
+    borderTopColor: designTokens.color.border.subtle,
+    paddingTop: designTokens.spacing.s,
   },
   siteNumber: {
     fontSize: designTokens.typography.fontSize.m,
