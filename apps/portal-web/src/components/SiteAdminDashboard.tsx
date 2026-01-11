@@ -3,20 +3,9 @@ import { Card, CardContent, CardHeader } from './Card';
 import { Title } from 'react-admin';
 import { CSpinner, CBadge } from '@coreui/react';
 import { useUser } from '../contexts/UserContext';
+import { trialsService } from '../apiClient';
 import { Box, Typography, useMediaQuery } from '@mui/material';
-
-interface Trial {
-  trial_id: number;
-  trial_number: string;
-  trial_name: string;
-  protocol_number?: string;
-  phase?: string;
-  status: string;
-  pi_name?: string;
-  assigned_user_count: number;
-  document_count?: number;
-  created_at: string;
-}
+import type { Trial } from '@protocolsync/shared-services';
 
 const MobileTrialCard = ({ trial, getPhaseColor, getStatusColor }: { trial: Trial; getPhaseColor: (phase?: string) => string; getStatusColor: (status: string) => string }) => {
   return (
@@ -82,32 +71,20 @@ export const SiteAdminDashboard = () => {
       try {
         setLoading(true);
 
-        const API_BASE_URL = import.meta.env.VITE_API_URL;
-        if (!API_BASE_URL) {
-          throw new Error('VITE_API_URL environment variable is not set');
-        }
-
-        const apiKey = import.meta.env.VITE_API_KEY;
-        const headers: HeadersInit = {};
-        if (apiKey) {
-          headers['X-API-Key'] = apiKey;
-        }
-
         // Get user ID from UserContext
         const userId = user?.id;
 
-        const url = userId
-          ? `${API_BASE_URL}/trials?user_id=${userId}&status=active`
-          : `${API_BASE_URL}/trials?status=active`;
-
         console.log('[SiteAdminDashboard] Fetching trials for user_id:', userId);
-        const response = await fetch(url, { headers });
-        const result = await response.json();
+        
+        const response = await trialsService.getTrials({
+          userId: userId,
+          status: 'active',
+        });
 
-        console.log('[SiteAdminDashboard] Trials data:', result);
+        console.log('[SiteAdminDashboard] Trials data:', response);
 
-        if (result.success && result.data) {
-          setTrials(result.data);
+        if (response.success && response.data) {
+          setTrials(response.data);
         } else {
           setTrials([]);
         }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ScrollView, Platform } from 'react-native';
-import { Button, Chip, Portal, Modal, Avatar, IconButton, TextInput } from 'react-native-paper';
-import { Picker } from '@react-native-picker/picker';
+import { Button, Chip, IconButton, Avatar } from 'react-native-paper';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +9,8 @@ import { LoadingState } from '../components/common/LoadingState';
 import { ErrorState } from '../components/common/ErrorState';
 import { EmptyState } from '../components/common/EmptyState';
 import { AppFooter } from '../components/common/AppFooter';
+import { AdminDetailModal } from '../components/modals/AdminDetailModal';
+import { AddAdminModal, type AddAdminFormData } from '../components/modals/AddAdminModal';
 import designTokens from '../design-tokens.json';
 
 interface SiteAdministrator {
@@ -37,13 +38,6 @@ interface Site {
   site_name: string;
 }
 
-interface AddAdminFormData {
-  email: string;
-  full_name: string;
-  job_title: string;
-  site_id: number | null;
-}
-
 export const SiteAdministratorsScreen = () => {
   const { user } = useAuth();
   const [administrators, setAdministrators] = useState<SiteAdministrator[]>([]);
@@ -55,13 +49,6 @@ export const SiteAdministratorsScreen = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [sites, setSites] = useState<Site[]>([]);
   const [loadingSites, setLoadingSites] = useState(false);
-  const [formData, setFormData] = useState<AddAdminFormData>({
-    email: '',
-    full_name: '',
-    job_title: '',
-    site_id: null
-  });
-  const [submitting, setSubmitting] = useState(false);
 
   const fetchAdministrators = useCallback(async () => {
     try {
@@ -227,60 +214,42 @@ export const SiteAdministratorsScreen = () => {
   }, [user]);
 
   const handleOpenAddModal = () => {
-    setFormData({
-      email: '',
-      full_name: '',
-      job_title: '',
-      site_id: null
-    });
     setError(null);
     setShowAddModal(true);
     fetchSites();
   };
 
-  const handleSubmitAddAdmin = async () => {
+  const handleSubmitAddAdmin = async (formData: AddAdminFormData) => {
     // Validation
     if (!formData.email || !formData.full_name || !formData.job_title || !formData.site_id) {
-      setError('All fields are required');
-      return;
+      throw new Error('All fields are required');
     }
 
     const companyId = user?.company?.id;
     const userId = user?.id;
     if (!companyId || !userId) {
-      setError('Company information not available');
-      return;
+      throw new Error('Company information not available');
     }
 
-    setSubmitting(true);
-    setError(null);
+    // Split full name into first and last name
+    const nameParts = formData.full_name.trim().split(' ');
+    const firstName = nameParts[0] || formData.full_name;
+    const lastName = nameParts.slice(1).join(' ') || '';
 
-    try {
-      // Split full name into first and last name
-      const nameParts = formData.full_name.trim().split(' ');
-      const firstName = nameParts[0] || formData.full_name;
-      const lastName = nameParts.slice(1).join(' ') || '';
+    const response = await sitesService.addSiteAdministrator(companyId, formData.site_id, {
+      admin_email: formData.email,
+      admin_first_name: firstName,
+      admin_last_name: lastName,
+      admin_job_title: formData.job_title,
+      assigned_by_user_id: userId,
+      requester_role: user?.role || 'admin'
+    });
 
-      const response = await sitesService.addSiteAdministrator(companyId, formData.site_id, {
-        admin_email: formData.email,
-        admin_first_name: firstName,
-        admin_last_name: lastName,
-        admin_job_title: formData.job_title,
-        assigned_by_user_id: userId,
-        requester_role: user?.role || 'admin'
-      });
-
-      if (response.success) {
-        setShowAddModal(false);
-        fetchAdministrators();
-      } else {
-        setError(response.error || 'Failed to add administrator');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setSubmitting(false);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to add administrator');
     }
+
+    fetchAdministrators();
   };
 
 
@@ -399,200 +368,20 @@ export const SiteAdministratorsScreen = () => {
         )}
       </View>
 
-      {/* Administrator Detail Modal */}
-      <Portal>
-        <Modal
-          visible={showDetailModal}
-          onDismiss={() => setShowDetailModal(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          {selectedAdmin && (
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Avatar.Text
-                  size={64}
-                  label={getInitials(selectedAdmin.name)}
-                  style={styles.modalAvatar}
-                  labelStyle={styles.modalAvatarLabel}
-                />
-              </View>
+      {/* Modals */}
+      <AdminDetailModal
+        visible={showDetailModal}
+        admin={selectedAdmin}
+        onClose={() => setShowDetailModal(false)}
+      />
 
-              <Text style={styles.modalTitle}>{selectedAdmin.name}</Text>
-
-              <Chip
-                style={[
-                  styles.statusChip,
-                  styles.statusChipCentered,
-                  selectedAdmin.status === 'active' ? styles.statusActive : styles.statusInactive,
-                ]}
-                textStyle={styles.statusText}
-              >
-                {selectedAdmin.status.toUpperCase()}
-              </Chip>
-
-              <Text style={styles.sectionTitle}>Administrator Information</Text>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoColumn}>
-                  <Text style={styles.detailLabel}>Name</Text>
-                  <Text style={styles.detailValue}>{selectedAdmin.name}</Text>
-                </View>
-                <View style={styles.infoColumn}>
-                  <Text style={styles.detailLabel}>Email</Text>
-                  <Text style={styles.detailValue}>{selectedAdmin.email}</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoColumn}>
-                  <Text style={styles.detailLabel}>Job Title</Text>
-                  <Text style={styles.detailValue}>{selectedAdmin.job_title}</Text>
-                </View>
-                <View style={styles.infoColumn}>
-                  <Text style={styles.detailLabel}>Role</Text>
-                  <Text style={styles.detailValue}>Site Admin</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoColumn}>
-                  <Text style={styles.detailLabel}>Site</Text>
-                  <Text style={styles.detailValue}>
-                    #{selectedAdmin.site_number} - {selectedAdmin.site_name}
-                  </Text>
-                </View>
-                <View style={styles.infoColumn}>
-                  <Text style={styles.detailLabel}>Status</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedAdmin.status.charAt(0).toUpperCase() + selectedAdmin.status.slice(1)}
-                  </Text>
-                </View>
-              </View>
-
-              {selectedAdmin.created_at && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Created</Text>
-                  <Text style={styles.detailValue}>
-                    {new Date(selectedAdmin.created_at).toLocaleString()}
-                  </Text>
-                </View>
-              )}
-
-              {selectedAdmin.record_hash && (
-                <>
-                  <View style={styles.divider} />
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Record Hash (21 CFR Part 11 Compliance)</Text>
-                    <Text style={[styles.detailValue, styles.hashText]}>
-                      {selectedAdmin.record_hash}
-                    </Text>
-                  </View>
-                </>
-              )}
-
-              <Button
-                mode="contained"
-                onPress={() => setShowDetailModal(false)}
-                style={styles.closeButton}
-                buttonColor={designTokens.color.accent.green500}
-              >
-                CLOSE
-              </Button>
-            </ScrollView>
-          )}
-        </Modal>
-
-        {/* Add Administrator Modal */}
-        <Modal
-          visible={showAddModal}
-          onDismiss={() => setShowAddModal(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <ScrollView style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Site Administrator</Text>
-
-            {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            <TextInput
-              label="Email Address"
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              mode="outlined"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              disabled={submitting}
-            />
-
-            <TextInput
-              label="Full Name"
-              value={formData.full_name}
-              onChangeText={(text) => setFormData({ ...formData, full_name: text })}
-              mode="outlined"
-              style={styles.input}
-              disabled={submitting}
-            />
-
-            <TextInput
-              label="Job Title"
-              value={formData.job_title}
-              onChangeText={(text) => setFormData({ ...formData, job_title: text })}
-              mode="outlined"
-              style={styles.input}
-              disabled={submitting}
-            />
-
-            <View style={styles.pickerSection}>
-              <Text style={styles.pickerLabel}>Site</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={formData.site_id}
-                  onValueChange={(value) => setFormData({ ...formData, site_id: value })}
-                  enabled={!submitting && !loadingSites}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select a site..." value={null} />
-                  {sites.map(site => (
-                    <Picker.Item
-                      key={site.site_id}
-                      label={`${site.site_number} - ${site.site_name}`}
-                      value={site.site_id}
-                    />
-                  ))}
-                </Picker>
-              </View>
-              {loadingSites && (
-                <Text style={styles.loadingText}>Loading sites...</Text>
-              )}
-            </View>
-
-            <View style={styles.modalActions}>
-              <Button
-                mode="outlined"
-                onPress={() => setShowAddModal(false)}
-                style={styles.cancelButton}
-                disabled={submitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                mode="contained"
-                onPress={handleSubmitAddAdmin}
-                style={styles.submitButton}
-                buttonColor={designTokens.color.accent.green500}
-                loading={submitting}
-                disabled={submitting}
-              >
-                Add Administrator
-              </Button>
-            </View>
-          </ScrollView>
-        </Modal>
-      </Portal>
+      <AddAdminModal
+        visible={showAddModal}
+        sites={sites}
+        loadingSites={loadingSites}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleSubmitAddAdmin}
+      />
 
       <AppFooter />
     </View>
@@ -721,122 +510,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: designTokens.color.border.light,
     paddingTop: designTokens.spacing.s,
-  },
-  modalContainer: {
-    backgroundColor: '#FFFFFF',
-    margin: 20,
-    borderRadius: designTokens.spacing.m,
-    maxHeight: '80%',
-  },
-  modalContent: {
-    padding: designTokens.spacing.l,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: designTokens.spacing.m,
-  },
-  modalAvatar: {
-    backgroundColor: designTokens.color.accent.green500,
-  },
-  modalAvatarLabel: {
-    fontSize: 28,
-    fontWeight: '600',
-  },
-  modalTitle: {
-    fontSize: designTokens.typography.fontSize.xl,
-    fontWeight: '600',
-    color: designTokens.color.text.default,
-    textAlign: 'center',
-    marginBottom: designTokens.spacing.m,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: designTokens.color.text.default,
-    marginTop: designTokens.spacing.l,
-    marginBottom: designTokens.spacing.m,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: designTokens.spacing.m,
-    gap: designTokens.spacing.m,
-  },
-  infoColumn: {
-    flex: 1,
-  },
-  detailSection: {
-    marginBottom: designTokens.spacing.m,
-  },
-  detailLabel: {
-    fontSize: designTokens.typography.fontSize.s,
-    color: designTokens.color.text.subtle,
-    marginBottom: designTokens.spacing.xs,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-  },
-  detailValue: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.default,
-    lineHeight: 22,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: designTokens.color.border.light,
-    marginVertical: designTokens.spacing.l,
-  },
-  hashText: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: designTokens.color.text.subtle,
-  },
-  closeButton: {
-    marginTop: designTokens.spacing.l,
-  },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: designTokens.spacing.m,
-    borderRadius: designTokens.spacing.xs,
-    marginBottom: designTokens.spacing.m,
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: designTokens.typography.fontSize.m,
-  },
-  input: {
-    marginBottom: designTokens.spacing.m,
-  },
-  pickerSection: {
-    marginBottom: designTokens.spacing.m,
-  },
-  pickerLabel: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.default,
-    marginBottom: designTokens.spacing.xs,
-    fontWeight: '600',
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: designTokens.color.border.light,
-    borderRadius: designTokens.spacing.xs,
-    backgroundColor: '#FFFFFF',
-  },
-  picker: {
-    height: 50,
-  },
-  loadingText: {
-    fontSize: designTokens.typography.fontSize.s,
-    color: designTokens.color.text.subtle,
-    marginTop: designTokens.spacing.xs,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: designTokens.spacing.m,
-    marginTop: designTokens.spacing.l,
-  },
-  cancelButton: {
-    flex: 1,
-  },
-  submitButton: {
-    flex: 1,
   },
 });

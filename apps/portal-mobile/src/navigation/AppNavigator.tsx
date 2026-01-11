@@ -6,9 +6,12 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { SitesScreen } from '../screens/SitesScreen';
 import { SiteAdministratorsScreen } from '../screens/SiteAdministratorsScreen';
 import { UsersScreen } from '../screens/UsersScreen';
+import { TrialsScreen } from '../screens/TrialsScreen';
+import { SiteUsersScreen } from '../screens/SiteUsersScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { BillingScreen } from '../screens/BillingScreen';
-import { HelpScreen } from '../screens/HelpScreen';
+import { ProtocolVersionsScreen } from '../screens/ProtocolVersionsScreen';
+import { DelegationLogScreen } from '../screens/DelegationLogScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Text } from 'react-native';
@@ -86,6 +89,34 @@ const DrawerNavigator = () => {
           }}
         />
         <Drawer.Screen
+          name="Trials"
+          component={TrialsScreen}
+          options={{
+            drawerLabel: 'Manage Trials',
+          }}
+        />
+        <Drawer.Screen
+          name="SiteUsers"
+          component={SiteUsersScreen}
+          options={{
+            drawerLabel: 'Site Users',
+          }}
+        />
+        <Drawer.Screen
+          name="Protocols"
+          component={ProtocolVersionsScreen}
+          options={{
+            drawerLabel: 'Protocol Versions',
+          }}
+        />
+        <Drawer.Screen
+          name="DelegationLog"
+          component={DelegationLogScreen}
+          options={{
+            drawerLabel: 'Delegation Log',
+          }}
+        />
+        <Drawer.Screen
           name="Reports"
           component={ReportsScreen}
           options={{
@@ -97,13 +128,6 @@ const DrawerNavigator = () => {
           component={BillingScreen}
           options={{
             drawerLabel: 'Billing',
-          }}
-        />
-        <Drawer.Screen
-          name="Help"
-          component={HelpScreen}
-          options={{
-            drawerLabel: 'Help',
           }}
         />
       </Drawer.Navigator>

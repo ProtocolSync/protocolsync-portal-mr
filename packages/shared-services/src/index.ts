@@ -9,6 +9,9 @@ export type { Site, CreateSiteData, UpdateSiteStatusData, AddSiteAdministratorDa
 export { UsersService } from './services/UsersService';
 export type { CompanyUser, CreateUserData, UpdateUserData } from './services/UsersService';
 
+export { TrialsService } from './services/TrialsService';
+export type { Trial, CreateTrialData, UpdateTrialData } from './services/TrialsService';
+
 export { HelpChatService } from './services/HelpChatService';
 export type {
   HelpMessage,
@@ -19,3 +22,18 @@ export type {
   EscalationRequest,
   EscalationResponse
 } from './services/HelpChatService';
+
+export { ProtocolDocumentsService } from './services/ProtocolDocumentsService';
+export type {
+  ProtocolDocument,
+  ProtocolVersion,
+  UploadProtocolData
+} from './services/ProtocolDocumentsService';
+
+export { DelegationService } from './services/DelegationService';
+export type {
+  DelegationReportConfig,
+  CreateDelegationData,
+  ReportGenerationResponse,
+  ReportStatusResponse
+} from './services/DelegationService';

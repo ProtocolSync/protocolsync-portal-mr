@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRole } from '../../contexts/RoleContext';
 import { HelpChatModal } from './HelpChatModal';
 import designTokens from '../../design-tokens.json';
 
 export const AppSidebar = (props: DrawerContentComponentProps) => {
   const { user } = useAuth();
+  const { activeRole } = useRole();
   const [helpModalVisible, setHelpModalVisible] = useState(false);
 
   // Navigation items based on role
   const getNavigationItems = () => {
-    const role = user?.role || 'site_user';
+    // Use activeRole if available, otherwise fall back to user.role
+    const role = activeRole || user?.role || 'site_user';
 
     const commonItems = [
       { label: 'Dashboard', icon: '📊', screen: 'Home', section: null },

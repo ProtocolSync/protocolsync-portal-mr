@@ -5,7 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV } from '../config/env';
-import { ApiClient, SitesService, UsersService, HelpChatService } from '@protocolsync/shared-services';
+import { ApiClient, SitesService, UsersService, HelpChatService, TrialsService, ProtocolDocumentsService, DelegationService } from '@protocolsync/shared-services';
 import type { ApiResponse, HelpMessage, HelpMessageSource } from '@protocolsync/shared-services';
 
 // Re-export types for convenience
@@ -29,6 +29,9 @@ export const api = apiClient;
 export const sitesService = new SitesService(apiClient);
 export const usersService = new UsersService(apiClient);
 export const helpChatService = new HelpChatService(apiClient);
+export const trialsService = new TrialsService(apiClient);
+export const protocolDocumentsService = new ProtocolDocumentsService(apiClient);
+export const delegationService = new DelegationService(apiClient);
 
 // Session management
 export const session = {

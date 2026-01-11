@@ -116,6 +116,14 @@ const getPhaseColor = (phase?: string) => {
 };
 
 const MobileTrialCard = ({ trial }: { trial: any }) => {
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const { user } = useUser();
+
+  // Only site admins can change trial status
+  const canChangeStatus = user?.role === 'site_admin' || user?.role === 'admin';
+  const isActive = trial.status === 'active';
+
   return (
     <Box className="datagrid-card">
       <Box className="datagrid-card-header">
@@ -124,8 +132,25 @@ const MobileTrialCard = ({ trial }: { trial: any }) => {
           <Typography className="datagrid-card-subtitle">{trial.trial_number}</Typography>
         </Box>
         <Box className="datagrid-card-actions">
-          <ToggleTrialStatusButton />
-          <ShowTrialButton />
+          {canChangeStatus && (
+            <CButton
+              color={isActive ? 'warning' : 'success'}
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowStatusModal(true)}
+              title={isActive ? 'Pause trial' : 'Activate trial'}
+            >
+              <CIcon icon={isActive ? cilLockLocked : cilLockUnlocked} style={{ fontSize: '16px' }} />
+            </CButton>
+          )}
+          <CButton
+            color="info"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDetailModal(true)}
+          >
+            <VisibilityIcon style={{ fontSize: '16px' }} />
+          </CButton>
         </Box>
       </Box>
       <Box className="datagrid-card-details">
@@ -171,6 +196,26 @@ const MobileTrialCard = ({ trial }: { trial: any }) => {
           </Typography>
         </Box>
       </Box>
+
+      {/* Modals */}
+      {showStatusModal && (
+        <TrialStatusModal
+          visible={showStatusModal}
+          onClose={() => setShowStatusModal(false)}
+          trial={{
+            trial_id: trial.trial_id,
+            trial_number: trial.trial_number,
+            trial_name: trial.trial_name,
+            status: trial.status
+          }}
+        />
+      )}
+      {showDetailModal && (
+        <TrialDetailModal
+          trialId={trial.trial_id}
+          onClose={() => setShowDetailModal(false)}
+        />
+      )}
     </Box>
   );
 };

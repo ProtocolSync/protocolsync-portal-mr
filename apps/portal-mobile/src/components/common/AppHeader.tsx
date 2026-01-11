@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Menu } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRole } from '../../contexts/RoleContext';
 import designTokens from '../../design-tokens.json';
+import type { DrawerParamList } from '../../navigation/AppNavigator';
 
 interface AppHeaderProps {
   onMenuPress: () => void;
@@ -10,15 +14,22 @@ interface AppHeaderProps {
 
 export const AppHeader = ({ onMenuPress }: AppHeaderProps) => {
   const { user, logout } = useAuth();
+  const { activeRole, setActiveRole, canSwitchRole, availableRoles } = useRole();
+  const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const [roleMenuVisible, setRoleMenuVisible] = useState(false);
 
-  // Role display mapping
-  const roleLabels: Record<string, string> = {
-    admin: 'ADMIN',
-    site_admin: 'SITE ADMIN',
-    trial_lead: 'TRIAL LEAD',
-    site_user: 'SITE USER',
+  const handleRoleModeChange = (newRole: string) => {
+    console.log('[AppHeader] Switching role to:', newRole);
+    setActiveRole(newRole as any);
+    setRoleMenuVisible(false);
+    
+    // Navigate to home/dashboard after role switch
+    navigation.navigate('Home');
   };
+
+  // Role display - use activeRole if available, fallback to user.role
+  const displayRole = activeRole || user?.role || 'site_user';
+  const roleLabel = availableRoles.find(r => r.value === displayRole)?.label || displayRole.toUpperCase().replace(/_/g, ' ');
 
   return (
     <View style={styles.header}>
@@ -47,53 +58,40 @@ export const AppHeader = ({ onMenuPress }: AppHeaderProps) => {
         </View>
 
         {/* Role Switcher */}
-        <Menu
-          visible={roleMenuVisible}
-          onDismiss={() => setRoleMenuVisible(false)}
-          anchor={
-            <TouchableOpacity
-              style={styles.roleButton}
-              onPress={() => setRoleMenuVisible(true)}
-            >
-              <Text style={styles.roleButtonText}>
-                {roleLabels[user?.role || 'site_user']}
-              </Text>
-              <Text style={styles.roleButtonArrow}>▼</Text>
-            </TouchableOpacity>
-          }
-        >
-          <Menu.Item
-            onPress={() => {
-              setRoleMenuVisible(false);
-              // TODO: Implement role switching
-            }}
-            title="ADMIN"
-            disabled={user?.role !== 'admin'}
-          />
-          <Menu.Item
-            onPress={() => {
-              setRoleMenuVisible(false);
-              // TODO: Implement role switching
-            }}
-            title="SITE ADMIN"
-            disabled={!['admin', 'site_admin'].includes(user?.role || '')}
-          />
-          <Menu.Item
-            onPress={() => {
-              setRoleMenuVisible(false);
-              // TODO: Implement role switching
-            }}
-            title="TRIAL LEAD"
-            disabled={!['admin', 'site_admin', 'trial_lead'].includes(user?.role || '')}
-          />
-          <Menu.Item
-            onPress={() => {
-              setRoleMenuVisible(false);
-              // TODO: Implement role switching
-            }}
-            title="SITE USER"
-          />
-        </Menu>
+        {canSwitchRole ? (
+          <Menu
+            visible={roleMenuVisible}
+            onDismiss={() => setRoleMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                style={styles.roleButton}
+                onPress={() => setRoleMenuVisible(true)}
+              >
+                <Text style={styles.roleButtonText}>
+                  {roleLabel}
+                </Text>
+                <Text style={styles.roleButtonArrow}>▼</Text>
+              </TouchableOpacity>
+            }
+          >
+            {availableRoles.map((role) => (
+              <Menu.Item
+                key={role.value}
+                onPress={() => handleRoleModeChange(role.value)}
+                title={role.label}
+              />
+            ))}
+          </Menu>
+        ) : (
+          <TouchableOpacity
+            style={styles.roleButton}
+            disabled
+          >
+            <Text style={styles.roleButtonText}>
+              {roleLabel}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Sign Out Link */}
         <TouchableOpacity onPress={logout}>

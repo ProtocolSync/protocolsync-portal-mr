@@ -9,6 +9,8 @@ import {
   Platform,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
+  Linking,
 } from 'react-native';
 import { TextInput, Button, Avatar, IconButton, Card } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -296,32 +298,6 @@ export const HelpChatModal = ({ visible, onClose }: HelpChatModalProps) => {
           <IconButton icon="close" size={24} onPress={onClose} />
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionBar}>
-          <Button
-            mode="outlined"
-            onPress={handleClearConversation}
-            style={styles.actionButton}
-            labelStyle={styles.actionButtonLabel}
-            disabled={messages.length <= 1}
-          >
-            Clear Chat
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => {
-              // TODO: Implement escalation modal
-              setError('Contact support feature coming soon!');
-            }}
-            style={styles.contactButton}
-            labelStyle={styles.actionButtonLabel}
-            buttonColor="#F59E0B"
-            disabled={!conversationId}
-          >
-            Contact Support
-          </Button>
-        </View>
-
         {/* Messages */}
         <KeyboardAvoidingView
           style={styles.content}
@@ -339,36 +315,6 @@ export const HelpChatModal = ({ visible, onClose }: HelpChatModalProps) => {
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
               </View>
-            )}
-
-            {/* Quick Actions - only show if less than 3 messages */}
-            {messages.length <= 1 && (
-              <Card style={styles.quickActionsCard}>
-                <Card.Content>
-                  <Text style={styles.quickActionsTitle}>Quick Help</Text>
-                  <Button
-                    mode="outlined"
-                    onPress={() => handleQuickAction('How do I add a new site?')}
-                    style={styles.quickButton}
-                  >
-                    How do I add a new site?
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => handleQuickAction('How do I generate a report?')}
-                    style={styles.quickButton}
-                  >
-                    How do I generate a report?
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => handleQuickAction('How do I manage users?')}
-                    style={styles.quickButton}
-                  >
-                    How do I manage users?
-                  </Button>
-                </Card.Content>
-              </Card>
             )}
           </ScrollView>
 
@@ -388,9 +334,42 @@ export const HelpChatModal = ({ visible, onClose }: HelpChatModalProps) => {
                   icon="send"
                   onPress={handleSendMessage}
                   disabled={loading || !inputText.trim()}
+                  color={loading || !inputText.trim() ? designTokens.color.text.subtle : designTokens.color.accent.green600}
                 />
               }
             />
+          </View>
+
+          {/* Footer Buttons */}
+          <View style={styles.footerButtons}>
+            <TouchableOpacity
+              onPress={handleClearConversation}
+              style={styles.clearButton}
+              disabled={loading}
+            >
+              <Text style={styles.clearButtonText}>Clear Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Contact Support',
+                  'Would you like to email our support team?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Email Support',
+                      onPress: () => {
+                        Linking.openURL('mailto:support@protocolsync.org?subject=Protocol Sync Support Request');
+                      },
+                    },
+                  ]
+                );
+              }}
+              style={styles.contactButton}
+              disabled={loading}
+            >
+              <Text style={styles.contactButtonText}>Contact Support</Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -427,33 +406,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#3B82F6',
   },
   headerTitle: {
-    fontSize: designTokens.typography.fontSize.l,
+    fontSize: 18,
     fontWeight: '600',
     color: designTokens.color.text.heading,
   },
   headerSubtitle: {
     fontSize: designTokens.typography.fontSize.xs,
     color: designTokens.color.text.subtle,
-  },
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: designTokens.spacing.m,
-    paddingVertical: designTokens.spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: designTokens.color.border.subtle,
-    gap: designTokens.spacing.s,
-  },
-  actionButton: {
-    flex: 1,
-  },
-  contactButton: {
-    flex: 1,
-  },
-  actionButtonLabel: {
-    fontSize: designTokens.typography.fontSize.xs,
   },
   content: {
     flex: 1,
@@ -567,19 +526,6 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: designTokens.typography.fontSize.s,
   },
-  quickActionsCard: {
-    marginTop: designTokens.spacing.l,
-    backgroundColor: '#FFFFFF',
-  },
-  quickActionsTitle: {
-    fontSize: designTokens.typography.fontSize.l,
-    fontWeight: '600',
-    color: designTokens.color.text.heading,
-    marginBottom: designTokens.spacing.m,
-  },
-  quickButton: {
-    marginBottom: designTokens.spacing.s,
-  },
   inputContainer: {
     padding: designTokens.spacing.m,
     backgroundColor: '#FFFFFF',
@@ -589,5 +535,38 @@ const styles = StyleSheet.create({
   input: {
     maxHeight: 100,
     backgroundColor: '#FFFFFF',
+  },
+  footerButtons: {
+    flexDirection: 'row',
+    gap: designTokens.spacing.m,
+    padding: designTokens.spacing.m,
+    paddingTop: 0,
+    backgroundColor: '#FFFFFF',
+  },
+  clearButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: designTokens.color.border.subtle,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    fontSize: designTokens.typography.fontSize.m,
+    fontWeight: '600',
+    color: designTokens.color.text.body,
+  },
+  contactButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 6,
+    backgroundColor: designTokens.color.accent.green500,
+    alignItems: 'center',
+  },
+  contactButtonText: {
+    fontSize: designTokens.typography.fontSize.m,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

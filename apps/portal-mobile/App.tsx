@@ -4,6 +4,7 @@ import { PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { RoleProvider } from './src/contexts/RoleContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -11,10 +12,12 @@ export default function App() {
     <SafeAreaProvider>
       <PaperProvider>
         <AuthProvider>
-          <NavigationContainer>
-            <AppNavigator />
-            <StatusBar style="auto" />
-          </NavigationContainer>
+          <RoleProvider>
+            <NavigationContainer>
+              <AppNavigator />
+              <StatusBar style="auto" />
+            </NavigationContainer>
+          </RoleProvider>
         </AuthProvider>
       </PaperProvider>
     </SafeAreaProvider>

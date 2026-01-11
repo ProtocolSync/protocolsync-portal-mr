@@ -37,6 +37,7 @@ interface AuthContextType {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  getToken: () => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -221,6 +222,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getToken = async (): Promise<string> => {
+    try {
+      const accounts = await msalInstance.getAccounts();
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No authenticated accounts found');
+      }
+
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        scopes: ['User.Read'],
+        account: accounts[0],
+      });
+
+      return tokenResponse.accessToken;
+    } catch (error) {
+      console.error('Error acquiring token:', error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -231,6 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         logout,
         refreshUser,
+        getToken,
       }}
     >
       {children}

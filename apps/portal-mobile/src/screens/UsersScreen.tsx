@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ScrollView, TextInput, Platform } from 'react-native';
-import { Button, Chip, Portal, Modal, Avatar, IconButton, ActivityIndicator } from 'react-native-paper';
-import { Picker } from '@react-native-picker/picker';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Platform } from 'react-native';
+import { Button, Chip, Avatar, IconButton } from 'react-native-paper';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,13 +9,17 @@ import { LoadingState } from '../components/common/LoadingState';
 import { ErrorState } from '../components/common/ErrorState';
 import { EmptyState } from '../components/common/EmptyState';
 import { AppFooter } from '../components/common/AppFooter';
+import { UserDetailModal } from '../components/modals/UserDetailModal';
+import { AddUserModal, AddUserFormData } from '../components/modals/AddUserModal';
+import { ToggleUserStatusModal } from '../components/modals/ToggleUserStatusModal';
+import { ResendInvitationModal } from '../components/modals/ResendInvitationModal';
 import designTokens from '../design-tokens.json';
 
 interface User {
   user_id: number;
   name: string;
   email: string;
-  job_title: string;
+  job_title?: string;
   department?: string;
   professional_credentials?: string;
   phone?: string;
@@ -59,20 +62,11 @@ export const UsersScreen = () => {
   const [showToggleModal, setShowToggleModal] = useState(false);
   const [showResendModal, setShowResendModal] = useState(false);
   const [actionUser, setActionUser] = useState<User | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
 
   // Add User modal states
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [addUserForm, setAddUserForm] = useState({
-    role: 'site_user',
-    email: '',
-    name: '',
-    job_title: '',
-    site_id: '',
-  });
   const [sites, setSites] = useState<Site[]>([]);
   const [loadingSites, setLoadingSites] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -101,48 +95,32 @@ export const UsersScreen = () => {
     }
   }, [user]);
 
-  const handleToggleStatus = async () => {
-    if (!actionUser) return;
-
+  const handleToggleStatus = async (userToToggle: User) => {
     const companyId = user?.company?.id;
-    if (!companyId) return;
+    if (!companyId) {
+      throw new Error('Company information not available');
+    }
 
-    setActionLoading(true);
-    try {
-      const newStatus = actionUser.status === 'active' || actionUser.status === 'pending' ? 'inactive' : 'active';
-      const response = await usersService.updateUserStatus(companyId, actionUser.user_id, newStatus);
+    const newStatus = userToToggle.status === 'active' || userToToggle.status === 'pending' ? 'inactive' : 'active';
+    const response = await usersService.updateUserStatus(companyId, userToToggle.user_id, newStatus);
 
-      if (response.success) {
-        fetchUsers();
-        setShowToggleModal(false);
-        setActionUser(null);
-      } else {
-        setError(response.error || 'Failed to update user status');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setActionLoading(false);
+    if (response.success) {
+      await fetchUsers();
+      setShowToggleModal(false);
+      setActionUser(null);
+    } else {
+      throw new Error(response.error || 'Failed to update user status');
     }
   };
 
-  const handleResendInvitation = async () => {
-    if (!actionUser) return;
+  const handleResendInvitation = async (userToResend: User) => {
+    const response = await usersService.resendInvitation(userToResend.user_id);
 
-    setActionLoading(true);
-    try {
-      const response = await usersService.resendInvitation(actionUser.user_id);
-
-      if (response.success) {
-        setShowResendModal(false);
-        setActionUser(null);
-      } else {
-        setError(response.error || 'Failed to resend invitation');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setActionLoading(false);
+    if (response.success) {
+      setShowResendModal(false);
+      setActionUser(null);
+    } else {
+      throw new Error(response.error || 'Failed to resend invitation');
     }
   };
 
@@ -165,48 +143,26 @@ export const UsersScreen = () => {
     }
   };
 
-  const handleAddUser = async () => {
-    if (!addUserForm.email || !addUserForm.name || !addUserForm.role) {
-      setError('Email, Full Name, and Organization Role are required');
-      return;
-    }
-
+  const handleAddUser = async (formData: AddUserFormData) => {
     const companyId = user?.company?.id;
     if (!companyId) {
-      setError('Company information not available');
-      return;
+      throw new Error('Company information not available');
     }
 
-    setSubmitting(true);
-    setError(null);
+    const userData = {
+      email: formData.email,
+      name: formData.name,
+      job_title: formData.job_title,
+      role: formData.role,
+    };
 
-    try {
-      const userData = {
-        email: addUserForm.email,
-        name: addUserForm.name,
-        job_title: addUserForm.job_title,
-        role: addUserForm.role,
-      };
+    const response = await usersService.createUser(companyId, userData);
 
-      const response = await usersService.createUser(companyId, userData);
-
-      if (response.success) {
-        setShowAddUserModal(false);
-        setAddUserForm({
-          role: 'site_user',
-          email: '',
-          name: '',
-          job_title: '',
-          site_id: '',
-        });
-        fetchUsers();
-      } else {
-        setError(response.error || 'Failed to add user');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setSubmitting(false);
+    if (response.success) {
+      await fetchUsers();
+      setShowAddUserModal(false);
+    } else {
+      throw new Error(response.error || 'Failed to add user');
     }
   };
 
@@ -477,322 +433,36 @@ export const UsersScreen = () => {
       </View>
       <AppFooter />
 
-      {/* User Detail Modal */}
-      <Portal>
-        <Modal
-          visible={showDetailModal}
-          onDismiss={() => setShowDetailModal(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          {selectedUser && (
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Avatar.Text
-                  size={64}
-                  label={getInitials(selectedUser.name)}
-                  style={[styles.modalAvatar, { backgroundColor: roleColors[selectedUser.role] }]}
-                  labelStyle={styles.modalAvatarLabel}
-                />
-              </View>
+      {/* Modals */}
+      <UserDetailModal
+        visible={showDetailModal}
+        user={selectedUser}
+        onDismiss={() => setShowDetailModal(false)}
+        roleColors={roleColors}
+        roleLabels={roleLabels}
+      />
 
-              <Text style={styles.modalTitle}>{selectedUser.name}</Text>
+      <AddUserModal
+        visible={showAddUserModal}
+        onDismiss={() => setShowAddUserModal(false)}
+        onSubmit={handleAddUser}
+        sites={sites}
+        loadingSites={loadingSites}
+      />
 
-              <View style={styles.modalChips}>
-                <Chip
-                  style={[
-                    styles.statusChip,
-                    selectedUser.status === 'active' ? styles.statusActive :
-                    selectedUser.status === 'pending' ? styles.statusPending : styles.statusInactive,
-                  ]}
-                  textStyle={styles.statusText}
-                >
-                  {selectedUser.status.toUpperCase()}
-                </Chip>
-                <Chip
-                  style={[styles.roleChip, { backgroundColor: roleColors[selectedUser.role] + '20' }]}
-                  textStyle={[styles.roleText, { color: roleColors[selectedUser.role] }]}
-                >
-                  {roleLabels[selectedUser.role]}
-                </Chip>
-              </View>
+      <ToggleUserStatusModal
+        visible={showToggleModal}
+        user={actionUser}
+        onDismiss={() => setShowToggleModal(false)}
+        onConfirm={handleToggleStatus}
+      />
 
-              <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Email</Text>
-                <Text style={styles.detailValue}>{selectedUser.email}</Text>
-              </View>
-
-              <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Job Title</Text>
-                <Text style={styles.detailValue}>{selectedUser.job_title}</Text>
-              </View>
-
-              {selectedUser.department && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Department</Text>
-                  <Text style={styles.detailValue}>{selectedUser.department}</Text>
-                </View>
-              )}
-
-              {selectedUser.assigned_sites && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Assigned Sites ({selectedUser.site_count})</Text>
-                  <Text style={styles.detailValue}>{selectedUser.assigned_sites}</Text>
-                </View>
-              )}
-
-              {selectedUser.last_login_at && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Last Login</Text>
-                  <Text style={styles.detailValue}>
-                    {new Date(selectedUser.last_login_at).toLocaleString()}
-                  </Text>
-                </View>
-              )}
-
-              <Button
-                mode="contained"
-                onPress={() => setShowDetailModal(false)}
-                style={styles.closeButton}
-                buttonColor={designTokens.color.accent.green500}
-              >
-                Close
-              </Button>
-            </ScrollView>
-          )}
-        </Modal>
-
-        {/* Toggle Status Confirmation Modal */}
-        <Modal
-          visible={showToggleModal}
-          onDismiss={() => setShowToggleModal(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <View style={styles.modalContent}>
-            {actionUser && (
-              <>
-                <Text style={styles.modalTitle}>
-                  {actionUser.status === 'active' || actionUser.status === 'pending' ? 'Deactivate' : 'Activate'} User
-                </Text>
-                <Text style={styles.modalText}>
-                  {actionUser.status === 'active' || actionUser.status === 'pending'
-                    ? `Are you sure you want to deactivate ${actionUser.name}? They will no longer be able to access the system.`
-                    : `Are you sure you want to activate ${actionUser.name}? They will regain access to the system.`
-                  }
-                </Text>
-                {error && (
-                  <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
-                  </View>
-                )}
-                <View style={styles.modalActions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => setShowToggleModal(false)}
-                    style={styles.cancelButton}
-                    disabled={actionLoading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleToggleStatus}
-                    style={styles.submitButton}
-                    buttonColor={actionUser.status === 'active' || actionUser.status === 'pending' ? '#F59E0B' : '#10B981'}
-                    loading={actionLoading}
-                    disabled={actionLoading}
-                  >
-                    {actionUser.status === 'active' || actionUser.status === 'pending' ? 'Deactivate' : 'Activate'}
-                  </Button>
-                </View>
-              </>
-            )}
-          </View>
-        </Modal>
-
-        {/* Resend Invitation Confirmation Modal */}
-        <Modal
-          visible={showResendModal}
-          onDismiss={() => setShowResendModal(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <View style={styles.modalContent}>
-            {actionUser && (
-              <>
-                <Text style={styles.modalTitle}>Resend Invitation</Text>
-                <Text style={styles.modalText}>
-                  Send a new invitation email to {actionUser.name} ({actionUser.email})?
-                </Text>
-                {error && (
-                  <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
-                  </View>
-                )}
-                <View style={styles.modalActions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => setShowResendModal(false)}
-                    style={styles.cancelButton}
-                    disabled={actionLoading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleResendInvitation}
-                    style={styles.submitButton}
-                    buttonColor={designTokens.color.accent.green500}
-                    loading={actionLoading}
-                    disabled={actionLoading}
-                  >
-                    Resend
-                  </Button>
-                </View>
-              </>
-            )}
-          </View>
-        </Modal>
-
-        {/* Add User Modal */}
-        <Modal
-          visible={showAddUserModal}
-          onDismiss={() => setShowAddUserModal(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <ScrollView style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New User</Text>
-
-            {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {/* Organization Role */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Organization Role *</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={addUserForm.role}
-                  onValueChange={(value) => setAddUserForm({ ...addUserForm, role: value })}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Site User" value="site_user" />
-                  <Picker.Item label="Trial Lead" value="trial_lead" />
-                  <Picker.Item label="Site Administrator" value="site_admin" />
-                </Picker>
-              </View>
-              <Text style={styles.formHelperText}>
-                Site Users participate in trials. Trial Leads manage protocol versions and delegations for their trials. Site Administrators manage trials and site users.
-              </Text>
-            </View>
-
-            {/* Email */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Email *</Text>
-              <TextInput
-                style={styles.input}
-                value={addUserForm.email}
-                onChangeText={(value) => setAddUserForm({ ...addUserForm, email: value })}
-                placeholder="user@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                editable={!submitting}
-              />
-            </View>
-
-            {/* Full Name */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Full Name *</Text>
-              <TextInput
-                style={styles.input}
-                value={addUserForm.name}
-                onChangeText={(value) => setAddUserForm({ ...addUserForm, name: value })}
-                placeholder="Jane Smith"
-                editable={!submitting}
-              />
-            </View>
-
-            {/* Job Title */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Job Title</Text>
-              <TextInput
-                style={styles.input}
-                value={addUserForm.job_title}
-                onChangeText={(value) => setAddUserForm({ ...addUserForm, job_title: value })}
-                placeholder="Clinical Research Coordinator"
-                editable={!submitting}
-              />
-            </View>
-
-            {/* Assign to Site */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>
-                Assign to Site {user?.role === 'admin' ? '(Optional)' : ''}
-              </Text>
-              {loadingSites ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color={designTokens.color.accent.green500} />
-                  <Text style={styles.loadingText}>Loading sites...</Text>
-                </View>
-              ) : (
-                <>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={addUserForm.site_id}
-                      onValueChange={(value) => setAddUserForm({ ...addUserForm, site_id: value })}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="-- No site assignment --" value="" />
-                      {sites.map((site) => (
-                        <Picker.Item
-                          key={site.site_id}
-                          label={`${site.site_number} - ${site.site_name} (${site.institution_name})`}
-                          value={site.site_id.toString()}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                  <Text style={styles.formHelperText}>
-                    {user?.role === 'admin'
-                      ? 'Select a site to assign the user to a specific site, or leave blank to create a company-level user.'
-                      : 'Select the site where this user will work.'
-                    }
-                  </Text>
-                </>
-              )}
-            </View>
-
-            {/* Info Alert */}
-            <View style={styles.infoContainer}>
-              <Text style={styles.infoText}>
-                ℹ️ User will receive an Entra ID invitation email and must complete registration before they can log in.
-              </Text>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.modalActions}>
-              <Button
-                mode="outlined"
-                onPress={() => setShowAddUserModal(false)}
-                style={styles.cancelButton}
-                disabled={submitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                mode="contained"
-                onPress={handleAddUser}
-                style={styles.submitButton}
-                buttonColor={designTokens.color.accent.green500}
-                loading={submitting}
-                disabled={submitting}
-              >
-                {submitting ? 'Adding User...' : 'Add User'}
-              </Button>
-            </View>
-          </ScrollView>
-        </Modal>
-      </Portal>
+      <ResendInvitationModal
+        visible={showResendModal}
+        user={actionUser}
+        onDismiss={() => setShowResendModal(false)}
+        onConfirm={handleResendInvitation}
+      />
     </View>
   );
 };
@@ -912,138 +582,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: designTokens.color.border.light,
     paddingTop: designTokens.spacing.s,
-  },
-  modalContainer: {
-    backgroundColor: '#FFFFFF',
-    margin: 20,
-    borderRadius: designTokens.spacing.m,
-    maxHeight: '80%',
-  },
-  modalContent: {
-    padding: designTokens.spacing.l,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: designTokens.spacing.m,
-  },
-  modalAvatar: {
-    backgroundColor: designTokens.color.accent.green500,
-  },
-  modalAvatarLabel: {
-    fontSize: 28,
-    fontWeight: '600',
-  },
-  modalTitle: {
-    fontSize: designTokens.typography.fontSize.xl,
-    fontWeight: '600',
-    color: designTokens.color.text.default,
-    textAlign: 'center',
-    marginBottom: designTokens.spacing.m,
-  },
-  modalText: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.default,
-    textAlign: 'center',
-    marginBottom: designTokens.spacing.l,
-  },
-  modalChips: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: designTokens.spacing.s,
-    marginBottom: designTokens.spacing.l,
-  },
-  detailSection: {
-    marginBottom: designTokens.spacing.m,
-  },
-  detailLabel: {
-    fontSize: designTokens.typography.fontSize.s,
-    color: designTokens.color.text.subtle,
-    marginBottom: designTokens.spacing.xs,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-  },
-  detailValue: {
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.default,
-    lineHeight: 22,
-  },
-  closeButton: {
-    marginTop: designTokens.spacing.l,
-  },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: designTokens.spacing.m,
-    borderRadius: designTokens.spacing.xs,
-    marginBottom: designTokens.spacing.m,
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: designTokens.typography.fontSize.m,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: designTokens.spacing.m,
-    marginTop: designTokens.spacing.l,
-  },
-  cancelButton: {
-    flex: 1,
-  },
-  submitButton: {
-    flex: 1,
-  },
-  formGroup: {
-    marginBottom: designTokens.spacing.l,
-  },
-  formLabel: {
-    fontSize: designTokens.typography.fontSize.m,
-    fontWeight: '600',
-    color: designTokens.color.text.default,
-    marginBottom: designTokens.spacing.xs,
-  },
-  formHelperText: {
-    fontSize: designTokens.typography.fontSize.s,
-    color: designTokens.color.text.subtle,
-    marginTop: designTokens.spacing.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: designTokens.color.border.light,
-    borderRadius: designTokens.spacing.xs,
-    padding: designTokens.spacing.m,
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.default,
-    backgroundColor: '#FFFFFF',
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: designTokens.color.border.light,
-    borderRadius: designTokens.spacing.xs,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-  },
-  picker: {
-    height: 50,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: designTokens.spacing.m,
-    backgroundColor: '#F3F4F6',
-    borderRadius: designTokens.spacing.xs,
-  },
-  loadingText: {
-    marginLeft: designTokens.spacing.m,
-    fontSize: designTokens.typography.fontSize.m,
-    color: designTokens.color.text.subtle,
-  },
-  infoContainer: {
-    backgroundColor: '#DBEAFE',
-    padding: designTokens.spacing.m,
-    borderRadius: designTokens.spacing.xs,
-    marginBottom: designTokens.spacing.l,
-  },
-  infoText: {
-    fontSize: designTokens.typography.fontSize.s,
-    color: '#1E40AF',
   },
 });

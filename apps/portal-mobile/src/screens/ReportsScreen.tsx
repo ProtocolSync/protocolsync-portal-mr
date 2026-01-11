@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Button, IconButton, Portal, Modal, TextInput as PaperTextInput, Switch, HelperText } from 'react-native-paper';
+import { Button, IconButton } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,7 @@ import designTokens from '../design-tokens.json';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
+import { GenerateReportModal } from '../components/modals/GenerateReportModal';
 
 interface ReportCard {
   id: string;
@@ -282,202 +283,6 @@ export const ReportsScreen = () => {
     }
   };
 
-  const renderModalFields = () => {
-    if (!activeReport) return null;
-
-    const commonFields = (
-      <>
-        <PaperTextInput
-          label="Report Title *"
-          value={reportConfig.reportTitle}
-          onChangeText={(text) => setReportConfig({ ...reportConfig, reportTitle: text })}
-          mode="outlined"
-          style={styles.input}
-          placeholder={`Report - ${new Date().toLocaleDateString()}`}
-        />
-        <HelperText type="info" visible={true}>
-          Internal name for this report
-        </HelperText>
-      </>
-    );
-
-    const dateRangeFields = (
-      <>
-        <Text style={styles.fieldLabel}>Date Range</Text>
-        <PaperTextInput
-          label="From Date"
-          value={reportConfig.dateFrom}
-          onChangeText={(text) => setReportConfig({ ...reportConfig, dateFrom: text })}
-          mode="outlined"
-          style={styles.input}
-          placeholder="YYYY-MM-DD"
-        />
-        <PaperTextInput
-          label="To Date"
-          value={reportConfig.dateTo}
-          onChangeText={(text) => setReportConfig({ ...reportConfig, dateTo: text })}
-          mode="outlined"
-          style={styles.input}
-          placeholder="YYYY-MM-DD"
-        />
-        <HelperText type="info" visible={true}>
-          Leave blank for "All Time"
-        </HelperText>
-      </>
-    );
-
-    const auditTrailSwitch = (
-      <View style={styles.switchContainer}>
-        <View style={styles.switchTextContainer}>
-          <Text style={styles.switchLabel}>Include Full Audit Trail</Text>
-          <Text style={styles.switchHelper}>
-            Include complete record hashes for each entry. Required for FDA 21 CFR Part 11 compliance.
-          </Text>
-        </View>
-        <Switch
-          value={reportConfig.includeAuditTrail}
-          onValueChange={(value) => setReportConfig({ ...reportConfig, includeAuditTrail: value })}
-          color={designTokens.color.accent.green600}
-        />
-      </View>
-    );
-
-    switch (activeReport) {
-      case 'system-access':
-        return (
-          <>
-            {commonFields}
-            {dateRangeFields}
-            <Text style={styles.fieldLabel}>Action Type Filter</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={reportConfig.actionTypeFilter}
-                onValueChange={(value) => setReportConfig({ ...reportConfig, actionTypeFilter: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="All Actions" value="all" />
-                <Picker.Item label="User Created" value="user_created" />
-                <Picker.Item label="User Activated" value="user_activated" />
-                <Picker.Item label="User Deactivated" value="user_deactivated" />
-                <Picker.Item label="Access Granted" value="access_granted" />
-                <Picker.Item label="Access Revoked" value="access_revoked" />
-              </Picker>
-            </View>
-            {auditTrailSwitch}
-          </>
-        );
-
-      case 'site-trial-master':
-        return (
-          <>
-            {commonFields}
-            <Text style={styles.fieldLabel}>Site Status Filter</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={reportConfig.siteStatusFilter}
-                onValueChange={(value) => setReportConfig({ ...reportConfig, siteStatusFilter: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="All Sites" value="all" />
-                <Picker.Item label="Active Sites Only" value="active" />
-                <Picker.Item label="Inactive Sites Only" value="inactive" />
-              </Picker>
-            </View>
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchLabel}>Include Trial Details</Text>
-              <Switch
-                value={reportConfig.includeTrialDetails}
-                onValueChange={(value) => setReportConfig({ ...reportConfig, includeTrialDetails: value })}
-                color={designTokens.color.accent.green600}
-              />
-            </View>
-            {reportConfig.includeTrialDetails && (
-              <>
-                <Text style={styles.fieldLabel}>Trial Status Filter</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={reportConfig.trialStatusFilter}
-                    onValueChange={(value) => setReportConfig({ ...reportConfig, trialStatusFilter: value })}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="All Trials" value="all" />
-                    <Picker.Item label="Active Trials Only" value="active" />
-                    <Picker.Item label="Paused Trials Only" value="paused" />
-                    <Picker.Item label="Completed Trials Only" value="completed" />
-                    <Picker.Item label="Closed Trials Only" value="closed" />
-                  </Picker>
-                </View>
-              </>
-            )}
-          </>
-        );
-
-      case 'permission-change':
-        return (
-          <>
-            {commonFields}
-            {dateRangeFields}
-            <Text style={styles.fieldLabel}>Change Type Filter</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={reportConfig.changeTypeFilter}
-                onValueChange={(value) => setReportConfig({ ...reportConfig, changeTypeFilter: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="All Changes" value="all" />
-                <Picker.Item label="Site Permissions Only" value="site_permission" />
-                <Picker.Item label="Trial Permissions Only" value="trial_permission" />
-              </Picker>
-            </View>
-            <Text style={styles.fieldLabel}>Action Filter</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={reportConfig.actionFilter}
-                onValueChange={(value) => setReportConfig({ ...reportConfig, actionFilter: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="All Actions" value="all" />
-                <Picker.Item label="Assigned" value="assigned" />
-                <Picker.Item label="Removed" value="removed" />
-                <Picker.Item label="Role Changed" value="role_changed" />
-              </Picker>
-            </View>
-          </>
-        );
-
-      case 'deactivation':
-        return (
-          <>
-            {commonFields}
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchLabel}>Include All Time (Ignore Date Range)</Text>
-              <Switch
-                value={reportConfig.includeAll}
-                onValueChange={(value) => setReportConfig({ ...reportConfig, includeAll: value })}
-                color={designTokens.color.accent.green600}
-              />
-            </View>
-            {!reportConfig.includeAll && dateRangeFields}
-            <Text style={styles.fieldLabel}>Status Filter</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={reportConfig.statusFilter}
-                onValueChange={(value) => setReportConfig({ ...reportConfig, statusFilter: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="All Statuses" value="all" />
-                <Picker.Item label="Deactivated Users Only" value="deactivated" />
-                <Picker.Item label="Inactive Users Only" value="inactive" />
-              </Picker>
-            </View>
-          </>
-        );
-
-      default:
-        return commonFields;
-    }
-  };
-
   const activeCard = reportCards.find(c => c.id === activeReport);
 
   if (generating) {
@@ -521,55 +326,15 @@ export const ReportsScreen = () => {
       </ScrollView>
 
       {/* Report Configuration Modal */}
-      <Portal>
-        <Modal
-          visible={!!activeReport}
-          onDismiss={() => setActiveReport(null)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Generate {activeCard?.title}</Text>
-              <IconButton
-                icon="close"
-                size={24}
-                onPress={() => setActiveReport(null)}
-              />
-            </View>
-
-            <View style={styles.alertBox}>
-              <Text style={styles.alertTitle}>FDA 21 CFR Part 11 Compliant Report</Text>
-              <Text style={styles.alertText}>
-                Configure your official {activeCard?.title.toLowerCase()}. This document will include
-                audit trails suitable for regulatory inspections.
-              </Text>
-            </View>
-
-            {renderModalFields()}
-
-            <View style={styles.modalActions}>
-              <Button
-                mode="outlined"
-                onPress={() => setActiveReport(null)}
-                style={styles.modalButton}
-                disabled={generating}
-              >
-                Cancel
-              </Button>
-              <Button
-                mode="contained"
-                onPress={handleGenerateReport}
-                style={styles.modalButton}
-                buttonColor={designTokens.color.accent.green600}
-                loading={generating}
-                disabled={generating || !reportConfig.reportTitle}
-              >
-                {generating ? 'Generating...' : 'Generate Report'}
-              </Button>
-            </View>
-          </ScrollView>
-        </Modal>
-      </Portal>
+      <GenerateReportModal
+        visible={!!activeReport}
+        onDismiss={() => setActiveReport(null)}
+        reportCard={activeCard || null}
+        reportConfig={reportConfig}
+        onConfigChange={setReportConfig}
+        onGenerate={handleGenerateReport}
+        generating={generating}
+      />
 
       <AppFooter />
     </View>
@@ -629,101 +394,5 @@ const styles = StyleSheet.create({
   },
   cardButton: {
     marginTop: designTokens.spacing.s,
-  },
-  modalContainer: {
-    backgroundColor: '#FFFFFF',
-    margin: 20,
-    borderRadius: designTokens.spacing.m,
-    maxHeight: '90%',
-  },
-  modalContent: {
-    padding: designTokens.spacing.l,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: designTokens.spacing.m,
-    paddingBottom: designTokens.spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: designTokens.color.border.subtle,
-  },
-  modalTitle: {
-    fontSize: designTokens.typography.fontSize.l,
-    fontWeight: '600',
-    color: designTokens.color.text.heading,
-    flex: 1,
-  },
-  alertBox: {
-    backgroundColor: '#EBF5FF',
-    borderRadius: designTokens.spacing.s,
-    padding: designTokens.spacing.m,
-    marginBottom: designTokens.spacing.l,
-    borderWidth: 1,
-    borderColor: '#3B82F6',
-  },
-  alertTitle: {
-    fontSize: designTokens.typography.fontSize.m,
-    fontWeight: '600',
-    color: '#1E40AF',
-    marginBottom: designTokens.spacing.xs,
-  },
-  alertText: {
-    fontSize: designTokens.typography.fontSize.s,
-    color: '#1E3A8A',
-    lineHeight: 20,
-  },
-  input: {
-    marginBottom: designTokens.spacing.s,
-  },
-  fieldLabel: {
-    fontSize: designTokens.typography.fontSize.m,
-    fontWeight: '600',
-    color: designTokens.color.text.heading,
-    marginBottom: designTokens.spacing.s,
-    marginTop: designTokens.spacing.s,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: designTokens.color.border.subtle,
-    borderRadius: 4,
-    marginBottom: designTokens.spacing.m,
-  },
-  picker: {
-    height: 50,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: designTokens.spacing.m,
-    paddingVertical: designTokens.spacing.s,
-  },
-  switchTextContainer: {
-    flex: 1,
-    marginRight: designTokens.spacing.m,
-  },
-  switchLabel: {
-    fontSize: designTokens.typography.fontSize.m,
-    fontWeight: '600',
-    color: designTokens.color.text.heading,
-    marginBottom: 4,
-  },
-  switchHelper: {
-    fontSize: designTokens.typography.fontSize.s,
-    color: designTokens.color.text.subtle,
-    lineHeight: 18,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: designTokens.spacing.m,
-    marginTop: designTokens.spacing.l,
-    paddingTop: designTokens.spacing.m,
-    borderTopWidth: 1,
-    borderTopColor: designTokens.color.border.subtle,
-  },
-  modalButton: {
-    minWidth: 100,
   },
 });

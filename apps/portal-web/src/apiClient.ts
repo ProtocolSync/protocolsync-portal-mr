@@ -3,7 +3,7 @@
  * Uses shared ApiClient from @protocolsync/shared-services
  */
 
-import { ApiClient, SitesService, UsersService } from '@protocolsync/shared-services';
+import { ApiClient, SitesService, UsersService, TrialsService } from '@protocolsync/shared-services';
 import type { IPublicClientApplication } from '@azure/msal-browser';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -94,6 +94,7 @@ export const apiClient = new ApiClient({
 // Export service instances
 export const sitesService = new SitesService(apiClient);
 export const usersService = new UsersService(apiClient);
+export const trialsService = new TrialsService(apiClient);
 
 // Export convenient API methods for backward compatibility
 export const api = {

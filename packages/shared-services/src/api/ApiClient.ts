@@ -31,6 +31,10 @@ export class ApiClient {
     this.onUnauthorized = config.onUnauthorized;
   }
 
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   async get<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
