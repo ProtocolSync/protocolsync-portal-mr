@@ -12,7 +12,7 @@ import {
 import { IconButton } from 'react-native-paper';
 import designTokens from '../../design-tokens.json';
 import { useAuth } from '../../contexts/AuthContext';
-import { protocolDocumentsService } from '../../services/apiClient';
+import { protocolDocumentsService } from '../../services/apiClient';import { DocumentQueryModal } from '../common/DocumentQueryModal';import { DocumentQueryModal } from '../common/DocumentQueryModal';
 import { ProtocolVersion } from '@protocolsync/shared-services';
 
 interface ProtocolVersionsModalProps {
@@ -36,6 +36,10 @@ export const ProtocolVersionsModal: React.FC<ProtocolVersionsModalProps> = ({
   const { getToken } = useAuth();
   const [versions, setVersions] = useState<ProtocolVersion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showQueryModal, setShowQueryModal] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<ProtocolVersion | null>(null);
+  const [showQueryModal, setShowQueryModal] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<ProtocolVersion | null>(null);
 
   useEffect(() => {
     if (visible && document) {
@@ -96,8 +100,8 @@ export const ProtocolVersionsModal: React.FC<ProtocolVersionsModalProps> = ({
   };
 
   const handleQuery = (version: ProtocolVersion) => {
-    // TODO: Implement Query functionality with ChatWidget
-    Alert.alert('Info', `Query functionality for version ${version.versionNumber} - Coming soon`);
+    setSelectedVersion(version);
+    setShowQueryModal(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -185,7 +189,7 @@ export const ProtocolVersionsModal: React.FC<ProtocolVersionsModalProps> = ({
 
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Record Hash</Text>
-                        <Text style={styles.detailValueHash} numberOfLines={2}>
+                        <Text style={styles.detailValueHash}>
                           {version.recordHash || 'Not available'}
                         </Text>
                       </View>
@@ -233,6 +237,20 @@ export const ProtocolVersionsModal: React.FC<ProtocolVersionsModalProps> = ({
           </ScrollView>
         )}
       </View>
+
+      {/* Document Query Modal */}
+      {selectedVersion && (
+        <DocumentQueryModal
+          visible={showQueryModal}
+          onClose={() => {
+            setShowQueryModal(false);
+            setSelectedVersion(null);
+          }}
+          documentId={selectedVersion.id}
+          documentName={document.documentName}
+          documentVersion={selectedVersion.versionNumber}
+        />
+      )}
     </Modal>
   );
 };
@@ -364,6 +382,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     flex: 1,
     textAlign: 'right',
+    flexWrap: 'wrap',
   },
   versionActions: {
     flexDirection: 'row',
@@ -371,7 +390,6 @@ const styles = StyleSheet.create({
     marginTop: designTokens.spacing.s,
   },
   actionButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -12,6 +12,7 @@ import { ReportsScreen } from '../screens/ReportsScreen';
 import { BillingScreen } from '../screens/BillingScreen';
 import { ProtocolVersionsScreen } from '../screens/ProtocolVersionsScreen';
 import { DelegationLogScreen } from '../screens/DelegationLogScreen';
+import { MyProtocolsScreen } from '../screens/MyProtocolsScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Text } from 'react-native';
@@ -114,6 +115,13 @@ const DrawerNavigator = () => {
           component={DelegationLogScreen}
           options={{
             drawerLabel: 'Delegation Log',
+          }}
+        />
+        <Drawer.Screen
+          name="MyProtocols"
+          component={MyProtocolsScreen}
+          options={{
+            drawerLabel: 'My Protocols',
           }}
         />
         <Drawer.Screen

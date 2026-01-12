@@ -5,6 +5,7 @@ import { useRole } from '../contexts/RoleContext';
 import { CROAdminDashboard } from '../components/dashboards/CROAdminDashboard';
 import { SiteAdminDashboard } from '../components/dashboards/SiteAdminDashboard';
 import { TrialLeadDashboard } from '../components/dashboards/TrialLeadDashboard';
+import { SiteUserDashboard } from '../components/dashboards/SiteUserDashboard';
 import { DrawerScreenProps } from '@react-navigation/drawer';
 import { DrawerParamList } from '../navigation/AppNavigator';
 import designTokens from '../design-tokens.json';
@@ -42,12 +43,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     case 'trial_lead':
       return <TrialLeadDashboard navigation={navigation} />;
     case 'site_user':
-      // TODO: Create SiteUserDashboard
-      return (
-        <View style={styles.container}>
-          <Text style={styles.placeholderText}>Site User Dashboard - Coming Soon</Text>
-        </View>
-      );
+      return <SiteUserDashboard navigation={navigation} />;
     default:
       return <CROAdminDashboard navigation={navigation} />;
   }

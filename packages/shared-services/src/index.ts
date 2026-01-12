@@ -37,3 +37,11 @@ export type {
   ReportGenerationResponse,
   ReportStatusResponse
 } from './services/DelegationService';
+
+export { DocumentQueryService } from './services/DocumentQueryService';
+export type {
+  DocumentQuerySource,
+  QueryMessage,
+  SendQueryRequest,
+  SendQueryResponse
+} from './services/DocumentQueryService';

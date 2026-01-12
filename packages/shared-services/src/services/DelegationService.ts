@@ -44,6 +44,75 @@ export class DelegationService {
   constructor(private apiClient: ApiClient) {}
 
   /**
+   * Get delegations for a user
+   */
+  async getDelegations(userId: string): Promise<ApiResponse<any>> {
+    try {
+      console.log('[DelegationService] Getting delegations for user:', userId);
+
+      const response = await this.apiClient.get(`/compliance/delegations?user_id=${userId}`);
+
+      if (response.success) {
+        // Unwrap nested data structure if it exists
+        const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+        return {
+          success: true,
+          data,
+        };
+      }
+
+      return {
+        success: false,
+        error: 'Failed to get delegations',
+      };
+    } catch (error) {
+      console.error('[DelegationService] Error getting delegations:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get delegations',
+      };
+    }
+  }
+
+  /**
+   * Accept or decline a delegation
+   */
+  async signDelegation(
+    delegationId: number,
+    userId: string,
+    action: 'accept' | 'decline',
+    printedName: string
+  ): Promise<ApiResponse<any>> {
+    try {
+      console.log('[DelegationService] Signing delegation:', delegationId, action);
+
+      const response = await this.apiClient.post(`/compliance/delegation/${delegationId}/sign`, {
+        user_id: parseInt(userId, 10), // Convert to number
+        action,
+        printed_name: printedName,
+      });
+
+      if (response.success) {
+        return {
+          success: true,
+          data: response.data,
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || `Failed to ${action} delegation`,
+      };
+    } catch (error) {
+      console.error('[DelegationService] Error signing delegation:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : `Failed to ${action} delegation`,
+      };
+    }
+  }
+
+  /**
    * Create a new delegation assignment
    */
   async createDelegation(data: CreateDelegationData): Promise<ApiResponse<any>> {
