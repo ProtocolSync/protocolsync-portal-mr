@@ -12,7 +12,7 @@ import {
 import { IconButton } from 'react-native-paper';
 import designTokens from '../../design-tokens.json';
 import { useAuth } from '../../contexts/AuthContext';
-import { protocolDocumentsService } from '../../services/apiClient';import { DocumentQueryModal } from '../common/DocumentQueryModal';import { DocumentQueryModal } from '../common/DocumentQueryModal';
+import { protocolDocumentsService } from '../../services/apiClient';
 import { ProtocolVersion } from '@protocolsync/shared-services';
 
 interface ProtocolVersionsModalProps {
@@ -36,8 +36,6 @@ export const ProtocolVersionsModal: React.FC<ProtocolVersionsModalProps> = ({
   const { getToken } = useAuth();
   const [versions, setVersions] = useState<ProtocolVersion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showQueryModal, setShowQueryModal] = useState(false);
-  const [selectedVersion, setSelectedVersion] = useState<ProtocolVersion | null>(null);
   const [showQueryModal, setShowQueryModal] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<ProtocolVersion | null>(null);
 
