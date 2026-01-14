@@ -2,14 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Linking, Platform } from 'react-native';
 import { Card, Button, Chip } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  billingService,
-  type Subscription,
-  type PaymentMethod,
-  type SubscriptionPlan,
-  type BillingStats,
-  type Invoice
-} from '../services/billingService';
+import { billingService } from '../services/apiClient';
+import type {
+  Subscription,
+  PaymentMethod,
+  SubscriptionPlan,
+  BillingStats,
+  Invoice
+} from '@protocolsync/shared-services';
 import { LoadingState } from '../components/common/LoadingState';
 import { AppFooter } from '../components/common/AppFooter';
 import { PaymentMethodForm } from '../components/PaymentMethodForm';
@@ -25,13 +25,29 @@ export const BillingScreen = () => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [stats, setStats] = useState<BillingStats>({ activeSites: 0, siteAdmins: 0, activeTrials: 0 });
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [subscribing, setSubscribing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchBillingData = useCallback(async () => {
     try {
       const companyId = user?.company?.id;
-      if (!companyId) return;
+      console.log('[BillingScreen] Fetching billing data for company:', companyId);
+      console.log('[BillingScreen] User object:', user);
+      
+      if (!companyId) {
+        console.warn('[BillingScreen] No company ID found');
+        return;
+      }
 
       const data = await billingService.getAllBillingData(Number(companyId));
+      console.log('[BillingScreen] Billing data received:', {
+        subscription: data.subscription,
+        plansCount: data.plans.length,
+        plans: data.plans,
+        paymentMethodsCount: data.paymentMethods.length,
+        stats: data.stats,
+        invoicesCount: data.invoices.length
+      });
 
       setSubscription(data.subscription);
       setPaymentMethods(data.paymentMethods);
@@ -39,7 +55,8 @@ export const BillingScreen = () => {
       setStats(data.stats);
       setInvoices(data.invoices);
     } catch (err) {
-      console.error('Error fetching billing data:', err);
+      console.error('[BillingScreen] Error fetching billing data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load billing data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -54,6 +71,47 @@ export const BillingScreen = () => {
     setRefreshing(true);
     fetchBillingData();
   }, [fetchBillingData]);
+
+  const subscribeToPlan = async (planName: string) => {
+    if (!user?.company?.id || !user?.id) return;
+
+    // Check if payment method exists for paid plans
+    const plan = plans.find((p: SubscriptionPlan) => p.plan_name === planName);
+    if (plan && plan.monthly_price > 0 && paymentMethods.length === 0) {
+      setError('Please add a payment method before subscribing');
+      setActiveTab('payment');
+      return;
+    }
+
+    setSubscribing(true);
+    setError(null);
+
+    try {
+      const result = await billingService.subscribeToPlan(
+        Number(user.company.id),
+        Number(user.id),
+        planName
+      );
+
+      // Refresh subscription data
+      await fetchBillingData();
+
+      // Navigate to payment tab
+      setActiveTab('payment');
+
+      // Show success message
+      if (result?.status === 'trialing') {
+        setError(`Success! You're now on the ${plan?.display_name} plan with a 14-day free trial. Please add a payment method.`);
+      } else {
+        setError(`Success! You're now subscribed to the ${plan?.display_name} plan.`);
+      }
+    } catch (err) {
+      console.error('Subscription error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to activate subscription');
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   const getTierColor = (planName?: string) => {
     if (!planName) return { bg: designTokens.color.background.page, text: designTokens.color.text.subtle };
@@ -89,7 +147,7 @@ export const BillingScreen = () => {
     }
   };
 
-  const defaultPaymentMethod = paymentMethods.find(pm => pm.is_default);
+  const defaultPaymentMethod = paymentMethods.find((pm: PaymentMethod) => pm.is_default);
   const tierColors = subscription?.plan_name ? getTierColor(subscription.plan_name) : { bg: '#f3f4f6', text: '#374151' };
 
   if (loading && !refreshing) {
@@ -114,6 +172,15 @@ export const BillingScreen = () => {
             <Text style={styles.title}>Billing & Subscription</Text>
             <Text style={styles.subtitle}>Manage your subscription and payment methods</Text>
           </View>
+
+          {/* Error/Success Banner */}
+          {error && (
+            <View style={[styles.errorBanner, error.includes('Success') && styles.successBanner]}>
+              <Text style={[styles.errorText, error.includes('Success') && styles.successText]}>
+                {error.includes('Success') ? '✓' : '✕'} {error}
+              </Text>
+            </View>
+          )}
 
           {/* Tab Navigation */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
@@ -186,7 +253,7 @@ export const BillingScreen = () => {
 
                   <Button
                     mode="outlined"
-                    onPress={() => {}}
+                    onPress={() => setActiveTab('plans')}
                     style={styles.changeButton}
                     textColor={designTokens.color.brand.primary}
                   >
@@ -275,7 +342,7 @@ export const BillingScreen = () => {
                 </Card.Content>
               </Card>
 
-              {plans.map(plan => {
+              {plans.map((plan: SubscriptionPlan) => {
                 const isCurrentPlan = subscription?.plan_name === plan.plan_name;
                 const planColor = getTierColor(plan.plan_name);
 
@@ -303,7 +370,7 @@ export const BillingScreen = () => {
 
                       {plan.features.features_list && (
                         <View style={styles.featuresList}>
-                          {plan.features.features_list.map((feature, idx) => (
+                          {plan.features.features_list.map((feature: string, idx: number) => (
                             <Text key={idx} style={styles.featureItem}>
                               ✓ {feature}
                             </Text>
@@ -313,12 +380,13 @@ export const BillingScreen = () => {
 
                       <Button
                         mode="contained"
-                        onPress={() => {}}
-                        disabled={isCurrentPlan}
+                        onPress={() => subscribeToPlan(plan.plan_name)}
+                        disabled={isCurrentPlan || subscribing}
+                        loading={subscribing}
                         style={styles.subscribeButton}
                         buttonColor={isCurrentPlan ? designTokens.color.text.subtle : designTokens.color.accent.green600}
                       >
-                        {isCurrentPlan ? 'Current Plan' : 'Subscribe'}
+                        {isCurrentPlan ? 'Current Plan' : subscribing ? 'Subscribing...' : 'Subscribe'}
                       </Button>
 
                       {plan.monthly_price > 0 && !subscription && (
@@ -339,7 +407,7 @@ export const BillingScreen = () => {
                 <Card style={styles.card}>
                   <Card.Content>
                     <Text style={styles.cardTitle}>Your Payment Methods</Text>
-                    {paymentMethods.map((pm) => (
+                    {paymentMethods.map((pm: PaymentMethod) => (
                       <View key={pm.payment_method_id} style={styles.paymentMethodRow}>
                         <View style={styles.paymentMethodDisplay}>
                           <View style={styles.cardBrandBox}>
@@ -378,6 +446,8 @@ export const BillingScreen = () => {
                   </Text>
                   <PaymentMethodForm
                     onSuccess={() => {
+                      // Clear any error messages
+                      setError('Payment method added successfully!');
                       // Refresh billing data to show new payment method
                       fetchBillingData();
                       // Optionally switch back to overview tab
@@ -397,7 +467,7 @@ export const BillingScreen = () => {
 
                 {invoices.length > 0 ? (
                   <View>
-                    {invoices.map((invoice) => {
+                    {invoices.map((invoice: Invoice) => {
                       const statusColors = getStatusColor(invoice.status);
                       return (
                         <View key={invoice.invoice_id} style={styles.invoiceRow}>
@@ -473,6 +543,26 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: designTokens.typography.fontSize.m,
     color: designTokens.color.text.subtle,
+  },
+  errorBanner: {
+    marginBottom: designTokens.spacing.m,
+    padding: designTokens.spacing.m,
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    borderRadius: 8,
+  },
+  successBanner: {
+    backgroundColor: '#d1fae5',
+    borderColor: '#10b981',
+  },
+  errorText: {
+    color: '#7f1d1d',
+    fontSize: designTokens.typography.fontSize.s,
+    fontWeight: '600' as const,
+  },
+  successText: {
+    color: '#065f46',
   },
   tabsScroll: {
     marginBottom: designTokens.spacing.m,

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { Text, TextInput, Button, Checkbox } from 'react-native-paper';
 import { WebView } from 'react-native-webview';
 import { useAuth } from '../contexts/AuthContext';
 import _designTokens  from '../constants/designTokens';
-import { billingService } from '../services/billingService';
+import { billingService } from '../services/apiClient';
 
 interface PaymentMethodFormProps {
   onSuccess: () => void;
@@ -21,6 +21,42 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
   const [stripeReady, setStripeReady] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [stripeInstance, setStripeInstance] = useState<any>(null);
+
+  // For web platform: Load Stripe.js and initialize elements
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.onload = () => {
+        // @ts-ignore
+        const stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+        setStripeInstance(stripe);
+        
+        const elements = stripe.elements();
+        const cardElement = elements.create('card', {
+          style: {
+            base: {
+              fontSize: '16px',
+              color: '#374151',
+              '::placeholder': { color: '#9ca3af' },
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            },
+            invalid: { color: '#dc2626' }
+          }
+        });
+        
+        const cardElementDiv = document.getElementById('card-element-web');
+        if (cardElementDiv) {
+          cardElement.mount('#card-element-web');
+          // @ts-ignore
+          window.cardElement = cardElement;
+          setStripeReady(true);
+        }
+      };
+      document.head.appendChild(script);
+    }
+  }, []);
 
   const handleSubmit = async () => {
     if (!user?.company?.id || !user?.id) {
@@ -48,8 +84,53 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
         Number(user.id)
       );
 
-      // Step 2: Set client secret for WebView to handle Stripe confirmation
-      setClientSecret(secret);
+      // Step 2: Handle platform-specific confirmation
+      if (Platform.OS === 'web') {
+        // Web: Use Stripe.js directly
+        if (!stripeInstance) {
+          throw new Error('Stripe not initialized');
+        }
+        
+        // @ts-ignore
+        const cardElement = window.cardElement;
+        if (!cardElement) {
+          throw new Error('Card element not initialized');
+        }
+
+        const { setupIntent, error: stripeError } = await stripeInstance.confirmCardSetup(secret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: { name: cardholderName }
+          }
+        });
+
+        if (stripeError) {
+          throw new Error(stripeError.message || 'Card validation failed');
+        }
+
+        if (!setupIntent?.payment_method) {
+          throw new Error('No payment method returned');
+        }
+
+        // Step 3: Save payment method to backend
+        await billingService.savePaymentMethod(
+          Number(user.company.id),
+          Number(user.id),
+          setupIntent.payment_method,
+          true
+        );
+
+        // Success!
+        setProcessing(false);
+        setCardholderName('');
+        setAgreedToTerms(false);
+        // @ts-ignore
+        if (window.cardElement) window.cardElement.clear();
+        onSuccess();
+      } else {
+        // Native: Set client secret for WebView to handle Stripe confirmation
+        setClientSecret(secret);
+      }
     } catch (err) {
       console.error('Payment error:', err);
       setError(err instanceof Error ? err.message : 'Failed to process payment method');
@@ -190,7 +271,7 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
 
   // Trigger Stripe confirmation when clientSecret is set
   useEffect(() => {
-    if (clientSecret && stripeReady && webViewRef.current) {
+    if (clientSecret && stripeReady && webViewRef.current && Platform.OS !== 'web') {
       const escapedName = cardholderName.replace(/'/g, "\\'").replace(/"/g, '\\"');
       webViewRef.current.injectJavaScript(
         `confirmCard('${clientSecret}', '${escapedName}'); true;`
@@ -231,16 +312,27 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
 
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Card Information</Text>
-        <WebView
-          ref={webViewRef}
-          source={{ html: stripeHTML }}
-          style={styles.webView}
-          onMessage={handleStripeMessage}
-          javaScriptEnabled
-          domStorageEnabled
-          startInLoadingState
-          scalesPageToFit={false}
-        />
+        {Platform.OS === 'web' ? (
+          <View style={styles.cardElementWeb}>
+            <div id="card-element-web" style={{
+              padding: '12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              backgroundColor: 'white'
+            }}></div>
+          </View>
+        ) : (
+          <WebView
+            ref={webViewRef}
+            source={{ html: stripeHTML }}
+            style={styles.webView}
+            onMessage={handleStripeMessage}
+            javaScriptEnabled
+            domStorageEnabled
+            startInLoadingState
+            scalesPageToFit={false}
+          />
+        )}
       </View>
 
       <View style={styles.secureNotice}>
@@ -338,6 +430,10 @@ const styles = StyleSheet.create({
   webView: {
     height: 80,
     backgroundColor: 'transparent',
+  },
+  cardElementWeb: {
+    height: 50,
+    marginBottom: _designTokens.spacing.s,
   },
   secureNotice: {
     flexDirection: 'row',

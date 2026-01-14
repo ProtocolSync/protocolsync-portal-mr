@@ -51,6 +51,23 @@
       }
     },
     {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug Portal Mobile (Chrome)",
+      "url": "http://localhost:8081",
+      "webRoot": "${workspaceFolder}/apps/portal-mobile",
+      "sourceMapPathOverrides": {
+        "webpack:///./~/*": "${workspaceFolder}/node_modules/*",
+        "webpack:///./*": "${workspaceFolder}/apps/portal-mobile/*",
+        "webpack:///src/*": "${workspaceFolder}/apps/portal-mobile/src/*",
+        "webpack:///*": "*"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ]
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "Debug API Server",

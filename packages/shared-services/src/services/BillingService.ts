@@ -1,4 +1,4 @@
-import { api } from './apiClient';
+import { ApiClient, ApiResponse } from '../api/ApiClient';
 
 export interface Subscription {
   subscription_id: number;
@@ -51,9 +51,11 @@ export interface Invoice {
   created_at: string;
 }
 
-class BillingService {
+export class BillingService {
+  constructor(private apiClient: ApiClient) {}
+
   async getSubscription(companyId: number): Promise<Subscription | null> {
-    const response = await api.get(`/companies/${companyId}/subscription`);
+    const response = await this.apiClient.get(`/companies/${companyId}/subscription`);
     if (response.success && response.data) {
       const data = (response.data as any).data || response.data;
       return data;
@@ -62,7 +64,7 @@ class BillingService {
   }
 
   async getPaymentMethods(companyId: number): Promise<PaymentMethod[]> {
-    const response = await api.get(`/companies/${companyId}/payment-methods`);
+    const response = await this.apiClient.get(`/companies/${companyId}/payment-methods`);
     if (response.success && response.data) {
       const data = (response.data as any).data || response.data;
       return Array.isArray(data) ? data : [];
@@ -70,8 +72,8 @@ class BillingService {
     return [];
   }
 
-  async createSetupIntent(companyId: number, userId: number): Promise<string> {
-    const response = await api.post(`/companies/${companyId}/payment/setup-intent`, {
+  async createSetupIntent(companyId: number, userId: number): Promise<ApiResponse<any>> {
+    const response = await this.apiClient.post(`/companies/${companyId}/payment/setup-intent`, {
       requester_role: 'admin',
       user_id: userId
     });
@@ -96,7 +98,7 @@ class BillingService {
     paymentMethodId: string,
     setAsDefault: boolean = true
   ): Promise<void> {
-    const response = await api.post(`/companies/${companyId}/payment-methods`, {
+    const response = await this.apiClient.post(`/companies/${companyId}/payment-methods`, {
       payment_method_id: paymentMethodId,
       user_id: userId,
       requester_role: 'admin',
@@ -109,7 +111,7 @@ class BillingService {
   }
 
   async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
-    const response = await api.get('/subscription/plans');
+    const response = await this.apiClient.get('/subscription/plans');
     if (response.success && response.data) {
       const plansData = (response.data as any).data || response.data;
       if (Array.isArray(plansData)) {
@@ -130,19 +132,19 @@ class BillingService {
   async getBillingStats(companyId: number): Promise<BillingStats> {
     try {
       // Fetch sites
-      const sitesResponse = await api.get(`/companies/${companyId}/sites`);
+      const sitesResponse = await this.apiClient.get(`/companies/${companyId}/sites`);
       const sitesData = sitesResponse.success && sitesResponse.data ?
         ((sitesResponse.data as any).data || (sitesResponse.data as any).sites || []) : [];
       const activeSites = Array.isArray(sitesData) ? sitesData.length : 0;
 
       // Fetch site administrators
-      const adminsResponse = await api.get(`/companies/${companyId}/site-administrators`);
+      const adminsResponse = await this.apiClient.get(`/companies/${companyId}/site-administrators`);
       const adminsData = adminsResponse.success && adminsResponse.data ?
         ((adminsResponse.data as any).data || []) : [];
       const siteAdmins = Array.isArray(adminsData) ? adminsData.length : 0;
 
       // Fetch protocols (trials)
-      const trialsResponse = await api.get(`/companies/${companyId}/protocols`);
+      const trialsResponse = await this.apiClient.get(`/companies/${companyId}/protocols`);
       const trialsData = trialsResponse.success && trialsResponse.data ?
         ((trialsResponse.data as any).data || []) : [];
       const activeTrials = Array.isArray(trialsData) ? trialsData.length : 0;
@@ -155,12 +157,26 @@ class BillingService {
   }
 
   async getInvoices(companyId: number, limit: number = 10): Promise<Invoice[]> {
-    const response = await api.get(`/companies/${companyId}/invoices?limit=${limit}`);
+    const response = await this.apiClient.get(`/companies/${companyId}/invoices?limit=${limit}`);
     if (response.success && response.data) {
       const data = (response.data as any).data || response.data;
       return Array.isArray(data) ? data : [];
     }
     return [];
+  }
+
+  async subscribeToPlan(companyId: number, userId: number, planName: string): Promise<any> {
+    const response = await this.apiClient.post(`/companies/${companyId}/subscription`, {
+      plan_name: planName,
+      requester_role: 'admin',
+      user_id: userId
+    });
+
+    if (!response.success) {
+      throw new Error((response.data as any)?.message || response.error || 'Failed to activate subscription');
+    }
+
+    return (response.data as any)?.data || response.data;
   }
 
   async getAllBillingData(companyId: number) {
@@ -181,5 +197,3 @@ class BillingService {
     };
   }
 }
-
-export const billingService = new BillingService();

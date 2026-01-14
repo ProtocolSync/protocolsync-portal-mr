@@ -45,3 +45,12 @@ export type {
   SendQueryRequest,
   SendQueryResponse
 } from './services/DocumentQueryService';
+
+export { BillingService } from './services/BillingService';
+export type {
+  Subscription,
+  PaymentMethod,
+  SubscriptionPlan,
+  BillingStats,
+  Invoice
+} from './services/BillingService';

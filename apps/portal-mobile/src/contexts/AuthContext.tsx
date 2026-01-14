@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import PublicClientApplication from 'react-native-msal';
 import { msalConfig } from '../config/authConfig';
-import { session } from '../services/apiClient';
+import { session, setMsalInstance } from '../services/apiClient';
 
 export interface UserProfile {
   id: string;
@@ -71,6 +71,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await msalInstance.init();
       console.log('✅ MSAL initialized');
 
+      // Share MSAL instance with apiClient for token retrieval
+      setMsalInstance(msalInstance);
+
       // Check if user is already authenticated
       const accounts = await msalInstance.getAccounts();
       if (accounts && accounts.length > 0) {
@@ -97,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('🔄 Starting login...');
 
       const result = await msalInstance.acquireToken({
-        scopes: ['User.Read'],
+        scopes: ['api://65b5eddd-4d68-421e-97a1-65399bfb4a48/access_as_user'],
       });
 
       if (!result || !result.account) {
@@ -147,12 +150,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchUserProfile = async (account: any) => {
     try {
       console.log('🔄 Fetching user profile...');
+      console.log('[DEBUG] Account:', account);
 
       // Get access token for API calls
       const tokenResponse = await msalInstance.acquireTokenSilent({
-        scopes: ['User.Read'],
+        scopes: ['api://65b5eddd-4d68-421e-97a1-65399bfb4a48/access_as_user'],
         account: account,
       });
+
+      console.log('[DEBUG] Token response received');
+      console.log('[DEBUG] Token length:', tokenResponse?.accessToken?.length);
+      console.log('[DEBUG] Token preview:', tokenResponse?.accessToken?.substring(0, 50) + '...');
 
       if (!tokenResponse) {
         throw new Error('Failed to acquire token');
@@ -160,7 +168,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // First, establish a session with the backend using the JWT token
       console.log('🔄 Establishing session with backend...');
+      console.log('[DEBUG] About to call session.loginWithJWT');
       const sessionResponse = await session.loginWithJWT(tokenResponse.accessToken);
+      console.log('[DEBUG] Session response:', sessionResponse);
 
       if (!sessionResponse.success) {
         throw new Error(sessionResponse.error || 'Failed to establish session');
@@ -230,7 +240,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const tokenResponse = await msalInstance.acquireTokenSilent({
-        scopes: ['User.Read'],
+        scopes: ['api://65b5eddd-4d68-421e-97a1-65399bfb4a48/access_as_user'],
         account: accounts[0],
       });
 

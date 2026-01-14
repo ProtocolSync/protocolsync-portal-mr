@@ -10,6 +10,6 @@ export const msalConfig = {
 
 // Scopes for the API access
 export const loginRequest = {
-  scopes: ['User.Read'], // Microsoft Graph API permission
+  scopes: ['api://65b5eddd-4d68-421e-97a1-65399bfb4a48/access_as_user'], // Custom API permission
   prompt: 'select_account' as const, // Always show account picker
 };
