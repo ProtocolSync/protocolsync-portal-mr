@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import PublicClientApplication from 'react-native-msal';
+import Constants from 'expo-constants';
 import { msalConfig } from '../config/authConfig';
 import { session, setMsalInstance } from '../services/apiClient';
 
@@ -42,7 +43,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const msalInstance = new PublicClientApplication(msalConfig);
+let msalInstance: PublicClientApplication | null = null;
+const isExpoGo = Constants.appOwnership === 'expo';
+
+if (!isExpoGo) {
+  try {
+    msalInstance = new PublicClientApplication(msalConfig);
+  } catch (error) {
+    console.warn('⚠️ Failed to create MSAL instance. Native module may be missing.');
+  }
+} else {
+  console.log('ℹ️ Running in Expo Go: MSAL authentication will be disabled.');
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -68,6 +80,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('AZURE_TENANT_ID is not configured. Please check your .env file.');
       }
 
+      if (!isExpoGo && !msalInstance) {
+        console.warn('⚠️ MSAL instance is null. Authentication will be disabled.');
+        setLoading(false);
+        return;
+      }
+      
+      if (isExpoGo) {
+         setLoading(false);
+         return;
+      }
+
       await msalInstance.init();
       console.log('✅ MSAL initialized');
 
@@ -86,7 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err: any) {
       console.error('❌ Error initializing auth:', err);
-      setError('Failed to initialize authentication');
+      setError(`Failed to initialize authentication: ${err.message || JSON.stringify(err)}`);
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
@@ -98,6 +121,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       console.log('🔄 Starting login...');
+      
+      if (isExpoGo) {
+         // Mock login for Expo Go
+         console.warn("⚠️ Mocking login in Expo Go");
+         setIsAuthenticated(true);
+         setUser({
+            id: 'mock-user-id',
+            azureAdUserId: 'mock-ad-id',
+            email: 'testuser@example.com',
+            displayName: 'Test User (Expo Go)',
+            role: 'site_user',
+            clientId: 'mock-client',
+            client: { name: 'Mock CRO', organizationType: 'CRO' }
+         });
+         setLoading(false);
+         return;
+      }
+
+      if (!msalInstance) {
+        throw new Error('Authentication unavailable: MSAL native module is not initialized.');
+      }
 
       const result = await msalInstance.acquireToken({
         scopes: ['api://65b5eddd-4d68-421e-97a1-65399bfb4a48/access_as_user'],
@@ -129,11 +173,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await session.logout();
 
       // Logout from MSAL
-      const accounts = await msalInstance.getAccounts();
-      if (accounts && accounts.length > 0) {
-        await msalInstance.signOut({
-          account: accounts[0],
-        });
+      if (msalInstance) {
+        const accounts = await msalInstance.getAccounts();
+        if (accounts && accounts.length > 0) {
+          await msalInstance.signOut({
+            account: accounts[0],
+          });
+        }
       }
       setIsAuthenticated(false);
       setUser(null);
@@ -149,6 +195,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (account: any) => {
     try {
+      if (!msalInstance) {
+         throw new Error('MSAL instance not available');
+      }
       console.log('🔄 Fetching user profile...');
       console.log('[DEBUG] Account:', account);
 
@@ -226,6 +275,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const refreshUser = async () => {
+    if (!msalInstance) return;
     const accounts = await msalInstance.getAccounts();
     if (accounts && accounts.length > 0) {
       await fetchUserProfile(accounts[0]);
@@ -234,6 +284,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const getToken = async (): Promise<string> => {
     try {
+      if (!msalInstance) throw new Error('MSAL not initialized');
       const accounts = await msalInstance.getAccounts();
       if (!accounts || accounts.length === 0) {
         throw new Error('No authenticated accounts found');
