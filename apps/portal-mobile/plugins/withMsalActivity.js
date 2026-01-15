@@ -6,6 +6,10 @@ const withMsalActivity = (config) => {
     const androidManifest = config.modResults;
     const mainApplication = androidManifest.manifest.application[0];
     const activityName = 'com.microsoft.identity.client.BrowserTabActivity';
+    
+    // Get the package name from config (e.g., org.protocolsync.mobile)
+    const packageName = config.android?.package || 'com.protocolsync.portalmobile';
+    console.log(`[withMsalActivity] Using package name for host: ${packageName}`);
 
     // Remove existing
     if (mainApplication.activity) {
@@ -27,7 +31,7 @@ const withMsalActivity = (config) => {
           ],
           data: [{
             $: {
-                'android:host': 'com.protocolsync.portalmobile',
+                'android:host': packageName,
                 'android:path': '/Xo8WBi6jzSxKDVR4drqm84yr9iU=',
                 'android:scheme': 'msauth',
             }

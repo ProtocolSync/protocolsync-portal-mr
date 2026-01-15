@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.protocolsync.portalmobile"
+      "bundleIdentifier": "org.protocolsync.mobile"
     },
     "android": {
-      "package": "com.protocolsync.portalmobile",
+      "package": "org.protocolsync.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -27,17 +27,25 @@
     },
     "plugins": [
       "./plugins/withGradleFixes",
-      "./plugins/withMsalActivity"
+      "./plugins/withMsalActivity",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiUrl": "http://localhost:3000/api/v1",
+      "apiUrl": "http://10.0.2.2:3000/api/v1",
       "apiKey": "ps_3860279e30a2f9e4edc356f11de40ab66c849a02e26434b6076e70053dfa6127",
       "azureClientId": "65b5eddd-4d68-421e-97a1-65399bfb4a48",
       "azureTenantId": "0ed0888e-3a5b-42f0-8ceb-bab9e938f05d",
-      "websiteUrl": "http://localhost:5174"
+      "websiteUrl": "http://10.0.2.2:5174"
     }
   }
 }
