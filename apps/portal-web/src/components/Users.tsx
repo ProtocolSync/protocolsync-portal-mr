@@ -15,12 +15,13 @@ import {
 import { CButton, CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CSpinner } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilPlus, cilCheckCircle, cilXCircle, cilEnvelopeClosed } from '@coreui/icons';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import { AddUserModal } from './AddUserModal';
 import { UserDetailModal } from './UserDetailModal';
 import { IconButton, Tooltip, Box, Typography, useMediaQuery } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { usersService } from '../apiClient';
 
 const getRoleLabel = (accountType: string) => {
   const roleMap: Record<string, string> = {
@@ -99,7 +100,7 @@ const ToggleUserStatusButton = () => {
   const record = useRecordContext();
   const notify = useNotify();
   const refresh = useRefresh();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [update] = useUpdate();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -201,38 +202,13 @@ const ResendInvitationButton = () => {
   const handleResend = async () => {
     setIsSending(true);
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL;
-      const token = localStorage.getItem('auth_token');
-      const apiKey = import.meta.env.VITE_API_KEY;
+      const response = await usersService.resendInvitation(record.id);
 
-      const headers: HeadersInit = {};
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      // Remove /v1 from API URL if present for this endpoint
-      const apiUrl = API_BASE_URL.replace('/v1', '');
-
-      const response = await fetch(
-        `${apiUrl}/users/${record.id}/resend-invitation`,
-        {
-          method: 'POST',
-          headers,
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (response.success) {
         notify('Invitation sent successfully', { type: 'success' });
         refresh();
       } else {
-        notify(data.message || 'Failed to send invitation', { type: 'error' });
+        notify(response.error || 'Failed to send invitation', { type: 'error' });
       }
     } catch (error: any) {
       console.error('Error sending invitation:', error);
@@ -266,7 +242,7 @@ const BulkToggleStatusButton = () => {
   const unselectAll = useUnselectAll('users');
   const refresh = useRefresh();
   const notify = useNotify();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [action, setAction] = useState<'activate' | 'deactivate'>('deactivate');
@@ -443,7 +419,7 @@ const UsersDatagrid = ({ onViewDetails }: { onViewDetails: (user: any) => void }
 };
 
 export const Users = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const refresh = useRefresh();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);

@@ -11,8 +11,8 @@ import {
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
 import { AppFooter } from '../common/AppFooter';
-import designTokens from '../../design-tokens.json';
-import { ENV } from '../../config/env';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
+import { delegationService } from '../../services/apiClient';
 
 interface Delegation {
   delegation_id: number;
@@ -52,26 +52,16 @@ export const SiteUserDashboard = ({ navigation }: SiteUserDashboardProps) => {
   const fetchDelegations = async () => {
     try {
       console.log('🔄 Fetching delegations for user:', user?.id);
-      
-      const response = await fetch(
-        `${ENV.API_URL}/compliance/delegations?user_id=${user?.id}`,
-        {
-          headers: {
-            'X-API-Key': ENV.API_KEY,
-          },
-        }
-      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Delegations API error:', response.status, errorText);
-        throw new Error(`Delegations API error: ${response.status}`);
+      const response = await delegationService.getDelegations(user!.id.toString());
+
+      if (!response.success) {
+        console.error('Delegations API error:', response.error);
+        throw new Error(response.error || 'Failed to fetch delegations');
       }
 
-      const result = await response.json();
-      console.log('✅ Delegations fetched:', result);
-      
-      setDelegations(result.data || result);
+      console.log('✅ Delegations fetched:', response.data);
+      setDelegations(response.data || []);
     } catch (error) {
       console.error('❌ Error fetching delegations:', error);
       setDelegations([]);

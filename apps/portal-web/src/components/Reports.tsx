@@ -27,12 +27,12 @@ import {
   cilPeople,
   cilUserUnfollow
 } from '@coreui/icons';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useReportGeneration } from '../hooks/useReportGeneration';
 import type { ReportType } from '../types/reports';
 
 export const Reports = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { generateReport, isGenerating } = useReportGeneration();
 

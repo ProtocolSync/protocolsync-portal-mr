@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Title, useGetList } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { CSpinner, CRow, CCol, CButton } from '@coreui/react';
 import { Card, CardContent, CardHeader } from './Card';
 
@@ -15,7 +15,7 @@ interface DashboardStats {
 
 export const CROAdminDashboard = () => {
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user } = useAuth();
 
   // Fetch sites
   const { data: sites, isLoading: sitesLoading } = useGetList(

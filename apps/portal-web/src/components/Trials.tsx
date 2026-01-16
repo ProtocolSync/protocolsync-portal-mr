@@ -10,18 +10,18 @@ import {
 import { CButton, CBadge } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilPlus, cilLockLocked, cilLockUnlocked } from '@coreui/icons';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import { AddTrialModal } from './AddTrialModal';
 import { TrialDetailModal } from './TrialDetailModal';
 import { TrialStatusModal } from './TrialStatusModal';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { Box, Typography, useMediaQuery } from '@mui/material';
-import { designTokens } from '../design-tokens';
+import { designTokens } from '@protocolsync/shared-styles/design-tokens';
 
 const ToggleTrialStatusButton = () => {
   const record = useRecordContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [showStatusModal, setShowStatusModal] = useState(false);
 
   if (!record) return null;
@@ -118,7 +118,7 @@ const getPhaseColor = (phase?: string) => {
 const MobileTrialCard = ({ trial }: { trial: any }) => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const { user } = useUser();
+  const { user } = useAuth();
 
   // Only site admins can change trial status
   const canChangeStatus = user?.role === 'site_admin' || user?.role === 'admin';
@@ -376,7 +376,7 @@ const TrialsDatagrid = ({ onCreateClick }: { onCreateClick: () => void }) => {
 };
 
 export const Trials = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const refresh = useRefresh();
   const [showAddModal, setShowAddModal] = useState(false);
 

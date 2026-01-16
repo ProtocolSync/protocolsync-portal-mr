@@ -11,7 +11,7 @@ import { EmptyState } from '../components/common/EmptyState';
 import { AppFooter } from '../components/common/AppFooter';
 import { AdminDetailModal } from '../components/modals/AdminDetailModal';
 import { AddAdminModal, type AddAdminFormData } from '../components/modals/AddAdminModal';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface SiteAdministrator {
   user_id: number;

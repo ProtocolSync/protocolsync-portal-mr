@@ -3,8 +3,17 @@
  * Uses shared ApiClient from @protocolsync/shared-services
  */
 
-import { ApiClient, SitesService, UsersService, TrialsService } from '@protocolsync/shared-services';
+import {
+  ApiClient,
+  SitesService,
+  UsersService,
+  TrialsService,
+  DelegationService,
+  ProtocolDocumentsService,
+  BillingService
+} from '@protocolsync/shared-services';
 import type { IPublicClientApplication } from '@azure/msal-browser';
+import { apiScopes } from './authConfig';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 const API_KEY = import.meta.env.VITE_API_KEY;
@@ -26,17 +35,19 @@ export const apiClient = new ApiClient({
   apiKey: API_KEY,
   getToken: async () => {
     if (!msalInstance) {
+      console.warn('[ApiClient] MSAL not initialized yet');
       throw new Error('MSAL not initialized');
     }
 
-    try {
-      const accounts = msalInstance.getAllAccounts();
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No authenticated user');
-      }
+    const accounts = msalInstance.getAllAccounts();
+    if (!accounts || accounts.length === 0) {
+      console.warn('[ApiClient] No authenticated accounts found');
+      throw new Error('No authenticated user');
+    }
 
+    try {
       const tokenResponse = await msalInstance.acquireTokenSilent({
-        scopes: ['User.Read'],
+        scopes: apiScopes,
         account: accounts[0],
       });
 
@@ -48,14 +59,15 @@ export const apiClient = new ApiClient({
       sessionStorage.setItem('auth_token', tokenResponse.accessToken);
 
       return tokenResponse.accessToken;
-    } catch (error: any) {
-      console.error('Failed to get token:', error);
+    } catch (error: unknown) {
+      const msalError = error as { name?: string; errorCode?: string; message?: string };
+      console.error('[ApiClient] Failed to get token:', msalError);
 
-      // Check if it's a session expiration error
-      if (error.name === 'InteractionRequiredAuthError' ||
-          error.errorCode === 'interaction_required' ||
-          error.message?.includes('interaction_required') ||
-          error.message?.includes('AADSTS160021')) {
+      // Check if it's a session expiration error - only logout for these specific cases
+      if (msalError.name === 'InteractionRequiredAuthError' ||
+          msalError.errorCode === 'interaction_required' ||
+          msalError.message?.includes('interaction_required') ||
+          msalError.message?.includes('AADSTS160021')) {
         console.log('[ApiClient] Session expired - redirecting to logout');
         // Logout and redirect to home
         await msalInstance.logoutRedirect({
@@ -74,20 +86,17 @@ export const apiClient = new ApiClient({
       return null;
     }
   },
-  onUnauthorized: async () => {
-    // Clear session and token
+  onUnauthorized: () => {
+    // Only clear local storage - don't auto-logout on 401
+    // The AuthContext will handle displaying the error and letting the user retry
+    console.warn('[ApiClient] Received 401 Unauthorized - clearing local session data');
     sessionStorage.removeItem('session_id');
     sessionStorage.removeItem('auth_token');
     sessionStorage.removeItem('user');
     localStorage.removeItem('session_id');
     localStorage.removeItem('auth_token');
-
-    // Logout via MSAL
-    if (msalInstance) {
-      await msalInstance.logoutRedirect({
-        postLogoutRedirectUri: '/'
-      });
-    }
+    // Note: We intentionally don't call logoutRedirect here
+    // to avoid redirect loops. Let the UI handle the error state.
   },
 });
 
@@ -95,6 +104,9 @@ export const apiClient = new ApiClient({
 export const sitesService = new SitesService(apiClient);
 export const usersService = new UsersService(apiClient);
 export const trialsService = new TrialsService(apiClient);
+export const delegationService = new DelegationService(apiClient);
+export const protocolDocumentsService = new ProtocolDocumentsService(apiClient);
+export const billingService = new BillingService(apiClient);
 
 // Export convenient API methods for backward compatibility
 export const api = {

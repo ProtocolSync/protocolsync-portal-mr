@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import type { Site } from '@protocolsync/shared-services';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface DisableSiteModalProps {
   visible: boolean;

@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { AppFooter } from '../components/common/AppFooter';
 import { DocumentQueryModal } from '../components/common/DocumentQueryModal';
 import { delegationService } from '../services/apiClient';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface Delegation {
   delegation_id: number;

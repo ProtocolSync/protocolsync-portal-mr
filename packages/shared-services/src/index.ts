@@ -2,9 +2,13 @@ export { ApiClient } from './api/ApiClient';
 export type { ApiClientConfig, ApiResponse } from './api/ApiClient';
 export type { IAuthService, AuthResponse } from './auth/IAuthService';
 
+// Session and user profile utilities
+export { SessionService } from './services/SessionService';
+export { transformUserProfileResponse } from './utils/userProfileTransformer';
+
 // Services
 export { SitesService } from './services/SitesService';
-export type { Site, CreateSiteData, UpdateSiteStatusData, AddSiteAdministratorData, SiteAdministrator } from './services/SitesService';
+export type { Site, CreateSiteData, UpdateSiteStatusData, AddSiteAdministratorData, SiteAdministrator, ProvisionSiteUserData } from './services/SitesService';
 
 export { UsersService } from './services/UsersService';
 export type { CompanyUser, CreateUserData, UpdateUserData } from './services/UsersService';

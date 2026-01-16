@@ -18,7 +18,7 @@ import { protocolDocumentsService } from '../services/apiClient';
 import { AppFooter } from '../components/common/AppFooter';
 import { ProtocolUploadModal } from '../components/modals/ProtocolUploadModal';
 import { ProtocolVersionsModal } from '../components/modals/ProtocolVersionsModal';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface ProtocolDocument {
   id: string;

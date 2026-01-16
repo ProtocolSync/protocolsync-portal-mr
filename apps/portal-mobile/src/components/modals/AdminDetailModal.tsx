@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface SiteAdministrator {
   user_id: number;

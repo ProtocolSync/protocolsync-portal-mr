@@ -15,7 +15,7 @@ import { cilCloudUpload } from '@coreui/icons';
 import { useNavigate } from 'react-router-dom';
 import { ProtocolUploadModal } from './ProtocolUploadModal';
 import { VersionBadge } from './VersionBadge';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const MobileProtocolVersionCard = ({ 
   document,
@@ -144,7 +144,7 @@ const ProtocolVersionsDatagrid = ({
 export const ProtocolVersionManagement = () => {
   const navigate = useNavigate();
   const refresh = useRefresh();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const { data, isLoading } = useGetList('protocol-documents', {
     pagination: { page: 1, perPage: 100 },

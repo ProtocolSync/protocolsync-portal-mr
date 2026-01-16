@@ -1,7 +1,7 @@
 export const AppFooter = () => {
   return (
     <footer className="mt-auto px-4 py-3 border-top bg-light">
-      <div className="d-flex align-items-center gap-3 flex-wrap justify-content-center" style={{ fontSize: '0.875rem' }}>
+      <div className="d-flex align-items-center gap-3 flex-wrap justify-content-center text-sm">
         <span>&copy; {new Date().getFullYear()} Protocol Sync LLC.</span>
         <span className="text-muted">|</span>
         <a

@@ -13,7 +13,7 @@ import { UserDetailModal } from '../components/modals/UserDetailModal';
 import { AddUserModal, AddUserFormData } from '../components/modals/AddUserModal';
 import { ToggleUserStatusModal } from '../components/modals/ToggleUserStatusModal';
 import { ResendInvitationModal } from '../components/modals/ResendInvitationModal';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface User {
   user_id: number;

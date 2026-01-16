@@ -16,7 +16,7 @@ import * as FileSystem from 'expo-file-system';
 import { Button } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/apiClient';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface ProtocolUploadModalProps {
   visible: boolean;

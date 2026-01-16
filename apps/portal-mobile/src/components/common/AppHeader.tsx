@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRole } from '../../contexts/RoleContext';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 import type { DrawerParamList } from '../../navigation/AppNavigator';
 
 interface AppHeaderProps {

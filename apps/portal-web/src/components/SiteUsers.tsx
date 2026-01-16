@@ -12,7 +12,7 @@ import {
   useUnselectAll
 } from 'react-admin';
 import { useState, useEffect } from 'react';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useRole } from '../contexts/RoleContext';
 import { CButton, CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CSpinner } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
@@ -23,12 +23,13 @@ import { AssignUserToTrialModal } from './AssignUserToTrialModal';
 import { IconButton, Tooltip, Box, Typography, useMediaQuery } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import { usersService, sitesService } from '../apiClient';
 
 const RemoveSiteUserButton = ({ siteId }: { siteId: number }) => {
   const record = useRecordContext();
   const notify = useNotify();
   const refresh = useRefresh();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [deleteOne] = useDelete();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -95,34 +96,14 @@ const ResendInvitationButton = () => {
   const handleResend = async () => {
     setIsSending(true);
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL;
-      const apiKey = import.meta.env.VITE_API_KEY;
+      // Use UsersService to resend invitation
+      const response = await usersService.resendInvitation(record.user_id);
 
-      const headers: HeadersInit = {};
-
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      // Users routes are registered at /api, not /api/v1
-      // API_BASE_URL is http://localhost:3000/api/v1, we need http://localhost:3000/api
-      const apiUrl = API_BASE_URL.replace('/v1', '');
-
-      const response = await fetch(
-        `${apiUrl}/users/${record.user_id}/resend-invitation`,
-        {
-          method: 'POST',
-          headers,
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (response.success) {
         notify('Invitation sent successfully', { type: 'success' });
         refresh();
       } else {
-        notify(data.message || 'Failed to send invitation', { type: 'error' });
+        notify(response.error || 'Failed to send invitation', { type: 'error' });
       }
     } catch (error: any) {
       console.error('Error sending invitation:', error);
@@ -200,17 +181,17 @@ const MobileSiteUserCard = ({ siteUser, siteId, onViewDetails, onAssignToTrial }
           <Typography className="datagrid-card-label">Trial</Typography>
           <Typography className="datagrid-card-value">
             {trials.length === 0 ? (
-              <span style={{ color: '#6c757d', fontSize: '0.875rem' }}>No trials</span>
+              <span className="text-text-subtle text-sm">No trials</span>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div className="flex flex-col gap-1">
                 {trials.map((trial: any, index: number) => (
-                  <div key={index} style={{ fontSize: '0.875rem' }}>
-                    <span style={{ fontWeight: 500 }}>{trial.trial_number}</span>
+                  <div key={index} className="text-sm">
+                    <span className="font-medium">{trial.trial_number}</span>
                     {trial.trial_role && (
                       <CBadge
                         color={trial.trial_role === 'Principal Investigator' ? 'primary' : 'info'}
                         size="sm"
-                        style={{ marginLeft: '6px', fontSize: '0.75rem' }}
+                        className="ml-1.5 text-xs"
                       >
                         {trial.trial_role}
                       </CBadge>
@@ -368,12 +349,12 @@ const SiteUsersDatagrid = ({
         label="Name"
         render={(record: any) => (
           <div>
-            <div style={{ fontWeight: 500 }}>
-              <a href={`mailto:${record.email}`} style={{ color: '#321fdb', textDecoration: 'none' }}>
+            <div className="font-medium">
+              <a href={`mailto:${record.email}`} className="text-primary no-underline">
                 {record.name}
               </a>
             </div>
-            <div style={{ fontSize: '0.875rem', color: '#6c757d' }}>
+            <div className="text-sm text-text-subtle">
               {record.email}
             </div>
           </div>
@@ -386,19 +367,19 @@ const SiteUsersDatagrid = ({
           const trials = record.trial_assignments || [];
 
           if (trials.length === 0) {
-            return <span style={{ color: '#6c757d', fontSize: '0.875rem' }}>No trials</span>;
+            return <span className="text-text-subtle text-sm">No trials</span>;
           }
 
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div className="flex flex-col gap-1">
               {trials.map((trial: any, index: number) => (
-                <div key={index} style={{ fontSize: '0.875rem' }}>
-                  <span style={{ fontWeight: 500 }}>{trial.trial_number}</span>
+                <div key={index} className="text-sm">
+                  <span className="font-medium">{trial.trial_number}</span>
                   {trial.trial_role && (
                     <CBadge
                       color={trial.trial_role === 'Principal Investigator' ? 'primary' : 'info'}
                       size="sm"
-                      style={{ marginLeft: '6px', fontSize: '0.75rem' }}
+                      className="ml-1.5 text-xs"
                     >
                       {trial.trial_role}
                     </CBadge>
@@ -463,7 +444,7 @@ const SiteUsersDatagrid = ({
 };
 
 export const SiteUsers = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { activeRole } = useRole();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -472,18 +453,16 @@ export const SiteUsers = () => {
   const [loading, setLoading] = useState(true);
   const refresh = useRefresh();
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-
   // Determine siteId based on user role and context
   useEffect(() => {
     const fetchSiteForAdmin = async () => {
       setLoading(true);
-      
+
       console.log('[SiteUsers] User object:', user);
       console.log('[SiteUsers] User site:', user?.site);
       console.log('[SiteUsers] User site.id:', user?.site?.id);
       console.log('[SiteUsers] Active role:', activeRole);
-      
+
       // If user has a site (site_admin mode), use it
       // Check for both truthy and non-empty string
       if (user?.site?.id && user.site.id !== '') {
@@ -500,17 +479,13 @@ export const SiteUsers = () => {
       if ((activeRole === 'admin' || activeRole === 'site_admin') && user?.company?.id) {
         try {
           console.log('[SiteUsers] Fetching sites for company:', user.company.id);
-          const apiKey = import.meta.env.VITE_API_KEY;
-          const headers: HeadersInit = {};
-          if (apiKey) {
-            headers['X-API-Key'] = apiKey;
-          }
-          const response = await fetch(`${API_BASE_URL}/companies/${user.company.id}/sites`, { headers });
-          const data = await response.json();
-          const sites = data.data || [];
-          
+
+          // Use SitesService to fetch sites for company
+          const response = await sitesService.getSitesByCompany(user.company.id);
+          const sites = response.data || [];
+
           console.log('[SiteUsers] Found sites:', sites);
-          
+
           if (sites.length === 1) {
             // If only one site, use it automatically
             console.log('[SiteUsers] Found single site:', sites[0].site_id);
@@ -528,7 +503,7 @@ export const SiteUsers = () => {
       } else {
         console.warn('[SiteUsers] Cannot fetch sites - missing role or company ID');
       }
-      
+
       setLoading(false);
     };
 

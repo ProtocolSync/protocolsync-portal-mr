@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { useNotify } from 'react-admin';
 import type { ReportType, ReportGenerationResponse, ReportStatusResponse } from '../types/reports';
+import { apiScopes } from '../authConfig';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -15,7 +16,7 @@ export const useReportGeneration = () => {
     if (accounts.length === 0) return '';
     try {
       const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
+        scopes: apiScopes,
         account: accounts[0]
       });
       return tokenResponse.accessToken;

@@ -8,7 +8,7 @@ import { api } from '../services/apiClient';
 import { ENV } from '../config/env';
 import { LoadingState } from '../components/common/LoadingState';
 import { AppFooter } from '../components/common/AppFooter';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';

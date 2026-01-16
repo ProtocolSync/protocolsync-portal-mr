@@ -5,7 +5,7 @@ import { DrawerParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../contexts/AuthContext';
 import { trialsService } from '../../services/apiClient';
 import { AppFooter } from '../common/AppFooter';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 import type { Trial } from '@protocolsync/shared-services';
 
 interface SiteAdminDashboardProps {

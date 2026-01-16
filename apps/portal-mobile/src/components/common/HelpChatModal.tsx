@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { helpChatService } from '../../services/apiClient';
 import type { HelpMessage } from '../../services/apiClient';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 const WELCOME_MESSAGE = `Hi! I'm your Protocol Sync Help Assistant. I can help you with:
 

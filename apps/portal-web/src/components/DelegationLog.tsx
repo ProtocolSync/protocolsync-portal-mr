@@ -7,7 +7,7 @@ import {
   FunctionField
 } from 'react-admin';
 import { Box, Typography, useMediaQuery } from '@mui/material';
-import { 
+import {
   CButton,
   CBadge,
   CModal,
@@ -22,9 +22,10 @@ import {
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilTask, cilCheckCircle, cilXCircle, cilPrint } from '@coreui/icons';
-import { useMsal } from '@azure/msal-react';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { VersionBadge } from './VersionBadge';
+import { delegationService, sitesService, apiClient } from '../apiClient';
+import type { DelegationReportConfig } from '@protocolsync/shared-services';
 
 interface Delegation {
   id: string;
@@ -212,7 +213,7 @@ const DelegationsDatagrid = ({
       <FunctionField
         label="Actions"
         render={(record: Delegation) => (
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="flex gap-2 flex-wrap">
             {record.userId === currentUserId && record.status === 'pending' && (
               <CButton color="success" variant="ghost" size="sm" onClick={() => onSign(record.id)}>
                 <CIcon icon={cilCheckCircle} className="me-1" />
@@ -235,8 +236,7 @@ const DelegationsDatagrid = ({
 };
 
 export const DelegationLog = () => {
-  const { user } = useUser();
-  const { instance } = useMsal();
+  const { user } = useAuth();
   const notify = useNotify();
 
   const [delegations, setDelegations] = useState<Delegation[]>([]);
@@ -245,13 +245,13 @@ export const DelegationLog = () => {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printConfig, setPrintConfig] = useState({
     reportTitle: '',
-    scopeFilter: 'current',
+    scopeFilter: 'current' as DelegationReportConfig['scopeFilter'],
     dateFrom: '',
     dateTo: '',
     protocolId: '',
     userFilter: '',
     includeAuditTrail: true,
-    reportFormat: 'pdf-signed'
+    reportFormat: 'pdf-signed' as DelegationReportConfig['reportFormat']
   });
   const [formData, setFormData] = useState({ userId: '', protocolVersionId: '', jobTitle: '' });
   const [viewingDelegation, setViewingDelegation] = useState<Delegation | null>(null);
@@ -259,41 +259,16 @@ export const DelegationLog = () => {
   const [protocolVersions, setProtocolVersions] = useState<any[]>([]);
   const [siteUsers, setSiteUsers] = useState<any[]>([]);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-  const getAuthToken = async () => {
-    const accounts = instance.getAllAccounts();
-    if (accounts.length === 0) return '';
-    try {
-      const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
-        account: accounts[0]
-      });
-      return tokenResponse.accessToken;
-    } catch (error) {
-      console.error('Failed to acquire token:', error);
-      return '';
-    }
-  };
-
   const fetchDelegations = async () => {
     try {
       setLoading(true);
-      const token = await getAuthToken();
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      const response = await fetch(`${API_BASE_URL}/compliance/delegations`, { headers });
-      if (!response.ok) throw new Error(`Failed to fetch delegations (${response.status})`);
-      const data = await response.json();
-      console.log('[DelegationLog] Raw API response:', data);
-      const rawDelegations = data.data || data.delegations || [];
+      // Use apiClient for generic endpoint not in DelegationService
+      const response = await apiClient.get<any>('/compliance/delegations');
+      if (!response.success) throw new Error('Failed to fetch delegations');
+
+      const rawDelegations = response.data?.data || response.data || [];
       console.log('[DelegationLog] Raw delegations array:', rawDelegations);
+
       const transformedDelegations = rawDelegations.map((d: any) => ({
         id: d.id || d.delegation_id,
         userId: d.user_id || d.userId,
@@ -324,19 +299,9 @@ export const DelegationLog = () => {
 
   const fetchProtocolVersions = async () => {
     try {
-      const token = await getAuthToken();
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      const response = await fetch(`${API_BASE_URL}/compliance/protocol-versions`, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        setProtocolVersions(data.data || []);
+      const response = await apiClient.get<any>('/compliance/protocol-versions');
+      if (response.success) {
+        setProtocolVersions(response.data?.data || response.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch protocol versions:', error);
@@ -345,25 +310,16 @@ export const DelegationLog = () => {
 
   const fetchSiteUsers = async () => {
     try {
-      const token = await getAuthToken();
       const siteId = user?.site?.id;
       if (!siteId) return;
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      const response = await fetch(`${API_BASE_URL}/sites/${siteId}/users`, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        const userList = Array.isArray(data) ? data : (data.data || []);
+
+      const response = await sitesService.getSiteUsers(siteId);
+      if (response.success && response.data) {
+        const userList = response.data;
 
         // Include current user if they are site_admin or admin
         // This allows single-user scenarios where admin/site_admin delegates to themselves
-        const filteredUsers = userList;
+        const filteredUsers = [...userList];
 
         // Add current user if not already in the list and they have delegation permissions
         const currentUserInList = filteredUsers.some((u: any) => u.email === user?.email);
@@ -395,38 +351,34 @@ export const DelegationLog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = await getAuthToken();
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const userLookupResponse = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/users?email=${encodeURIComponent(formData.userId)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-API-Key': apiKey
-        }
-      });
-      if (!userLookupResponse.ok) throw new Error('User not found');
-      const staffUser = await userLookupResponse.json();
-      const delegatedUserId = staffUser.user_id || staffUser.id;
+      // Look up user by email using apiClient
+      const baseUrl = apiClient.getBaseUrl().replace('/api/v1', '');
+      const userLookupResponse = await apiClient.get<any>(`${baseUrl}/api/users?email=${encodeURIComponent(formData.userId)}`.replace(apiClient.getBaseUrl(), ''));
 
-      const response = await fetch(`${API_BASE_URL}/compliance/delegation`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-API-Key': apiKey
-        },
-        body: JSON.stringify({
-          delegated_by_user_id: user?.id,
-          delegated_user_id: delegatedUserId,
-          protocol_version_id: parseInt(formData.protocolVersionId),
-          delegated_job_title: formData.jobTitle,
-          task_description: `Delegated as ${formData.jobTitle}`,
-          effective_start_date: new Date().toISOString().split('T')[0],
-          effective_end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          training_required: false
-        })
+      // Try alternative endpoint if first fails
+      let delegatedUserId: string;
+      if (!userLookupResponse.success) {
+        // Try to find user in siteUsers list by email
+        const foundUser = siteUsers.find(u => u.email === formData.userId);
+        if (!foundUser) throw new Error('User not found');
+        delegatedUserId = foundUser.user_id || foundUser.id;
+      } else {
+        const staffUser = userLookupResponse.data;
+        delegatedUserId = staffUser.user_id || staffUser.id;
+      }
+
+      const response = await delegationService.createDelegation({
+        delegated_by_user_id: user?.id || '',
+        delegated_user_id: delegatedUserId,
+        protocol_version_id: parseInt(formData.protocolVersionId),
+        delegated_job_title: formData.jobTitle,
+        task_description: `Delegated as ${formData.jobTitle}`,
+        effective_start_date: new Date().toISOString().split('T')[0],
+        effective_end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        training_required: false
       });
-      if (!response.ok) throw new Error('Failed to create delegation');
+
+      if (!response.success) throw new Error(response.error || 'Failed to create delegation');
       notify('Delegation created successfully', { type: 'success' });
       setShowForm(false);
       setFormData({ userId: '', protocolVersionId: '', jobTitle: '' });
@@ -438,20 +390,13 @@ export const DelegationLog = () => {
 
   const handleSign = async (delegationId: string) => {
     try {
-      const token = await getAuthToken();
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      const response = await fetch(`${API_BASE_URL}/compliance/delegation/${delegationId}/sign`, {
-        method: 'POST',
-        headers
-      });
-      if (!response.ok) throw new Error('Failed to sign delegation');
+      const response = await delegationService.signDelegation(
+        parseInt(delegationId),
+        user?.id || '',
+        'accept',
+        user?.displayName || ''
+      );
+      if (!response.success) throw new Error(response.error || 'Failed to sign delegation');
       notify('Delegation signed successfully', { type: 'success' });
       fetchDelegations();
     } catch (error) {
@@ -461,21 +406,12 @@ export const DelegationLog = () => {
 
   const handleRevoke = async (delegationId: string) => {
     try {
-      const token = await getAuthToken();
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      const response = await fetch(`${API_BASE_URL}/compliance/delegation/${delegationId}/revoke`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ revoked_by_user_id: user?.id, revocation_reason: 'Revoked by authorized personnel' })
-      });
-      if (!response.ok) throw new Error('Failed to revoke delegation');
+      const response = await delegationService.revokeDelegation(
+        delegationId,
+        user?.id || '',
+        'Revoked by authorized personnel'
+      );
+      if (!response.success) throw new Error(response.error || 'Failed to revoke delegation');
       notify('Delegation revoked successfully', { type: 'success' });
       setRevokingDelegation(null);
       fetchDelegations();
@@ -489,49 +425,35 @@ export const DelegationLog = () => {
 
   const handleGenerateReport = async () => {
     try {
-      const token = await getAuthToken();
-      
       // Set default report title if empty
       const title = printConfig.reportTitle || `Delegation Log - ${new Date().toLocaleDateString()}`;
-      
-      const payload = {
-        userId: user?.id,
+
+      const config: DelegationReportConfig = {
         reportTitle: title,
         scopeFilter: printConfig.scopeFilter,
-        dateFrom: printConfig.dateFrom || null,
-        dateTo: printConfig.dateTo || null,
-        protocolId: printConfig.protocolId || null,
-        userFilter: printConfig.userFilter || null,
+        dateFrom: printConfig.dateFrom || undefined,
+        dateTo: printConfig.dateTo || undefined,
+        protocolId: printConfig.protocolId || undefined,
+        userFilter: printConfig.userFilter || undefined,
         includeAuditTrail: printConfig.includeAuditTrail,
         reportFormat: printConfig.reportFormat
       };
 
-      console.log('[Generate Report] Payload:', payload);
+      console.log('[Generate Report] Config:', config);
 
-      const response = await fetch(`${API_BASE_URL}/reports/delegation-log`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-API-Key': import.meta.env.VITE_API_KEY
-        },
-        body: JSON.stringify(payload)
-      });
+      const response = await delegationService.generateReport(user?.id || '', config);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to start report generation');
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to start report generation');
       }
 
-      const data = await response.json();
-      console.log('[Generate Report] Response:', data);
-
+      console.log('[Generate Report] Response:', response.data);
       notify('Report generation started. Download will begin shortly...', { type: 'info' });
       setShowPrintModal(false);
 
-      // Poll for report completion
-      const reportId = data.data.report_id;
-      pollReportStatus(reportId, token);
+      // Poll for report completion using service
+      const reportId = response.data.report_id;
+      pollReportStatus(reportId);
 
     } catch (error) {
       console.error('[Generate Report] Error:', error);
@@ -539,80 +461,60 @@ export const DelegationLog = () => {
     }
   };
 
-  const pollReportStatus = async (reportId: string, token: string) => {
-    const maxAttempts = 30; // 30 seconds timeout
-    let attempts = 0;
+  const pollReportStatus = async (reportId: string) => {
+    try {
+      const result = await delegationService.pollReportStatus(
+        reportId,
+        (status) => {
+          console.log(`[Poll Report] Status: ${status.status}`);
+        }
+      );
 
-    const checkStatus = async () => {
-      try {
-        attempts++;
-        
-        const response = await fetch(`${API_BASE_URL}/reports/status/${reportId}`, {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'X-API-Key': import.meta.env.VITE_API_KEY
-          }
-        });
+      if (result.success && result.data) {
+        notify('Report generated successfully! Downloading...', { type: 'success' });
 
-        if (!response.ok) throw new Error('Failed to check report status');
-
-        const data = await response.json();
-        const status = data.data.status;
-
-        console.log(`[Poll Report] Attempt ${attempts}: ${status}`);
-
-        if (status === 'completed') {
-          notify('Report generated successfully! Downloading...', { type: 'success' });
-          // Trigger download
-          // Download with headers using fetch, then trigger browser download
-          try {
-            const downloadResponse = await fetch(`${API_BASE_URL}/reports/download/${reportId}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'X-API-Key': import.meta.env.VITE_API_KEY
-              }
-            });
-            if (!downloadResponse.ok) throw new Error('Failed to download report');
-            const blob = await downloadResponse.blob();
-            // Try to get filename from Content-Disposition header
-            // Use report title or fallback to reportId
-            let filename = printConfig.reportTitle?.trim()
-              ? printConfig.reportTitle.trim().replace(/[^a-zA-Z0-9-_\.]/g, '_') + '.pdf'
-              : (reportId ? `${reportId}.pdf` : 'delegation-report.pdf');
-            // If Content-Disposition header provides a filename, prefer it
-            const disposition = downloadResponse.headers.get('Content-Disposition');
-            if (disposition && disposition.indexOf('filename=') !== -1) {
-              const match = disposition.match(/filename="?([^";]+)"?/);
-              if (match && match[1]) filename = match[1];
+        // Download the report
+        const downloadUrl = delegationService.getDownloadUrl(reportId);
+        try {
+          const downloadResponse = await fetch(downloadUrl, {
+            headers: {
+              'Authorization': `Bearer ${sessionStorage.getItem('auth_token') || ''}`,
+              'X-API-Key': import.meta.env.VITE_API_KEY
             }
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-          } catch (err) {
-            notify('Failed to download report', { type: 'error' });
-          }
-        } else if (status === 'failed') {
-          notify('Report generation failed: ' + (data.data.error_message || 'Unknown error'), { type: 'error' });
-        } else if (attempts < maxAttempts) {
-          // Still generating, check again in 1 second
-          setTimeout(checkStatus, 1000);
-        } else {
-          notify('Report generation is taking longer than expected. Please check back later.', { type: 'warning' });
-        }
-      } catch (error) {
-        console.error('[Poll Report] Error:', error);
-        if (attempts < maxAttempts) {
-          setTimeout(checkStatus, 1000);
-        }
-      }
-    };
+          });
 
-    checkStatus();
+          if (!downloadResponse.ok) throw new Error('Failed to download report');
+
+          const blob = await downloadResponse.blob();
+          // Try to get filename from Content-Disposition header
+          let filename = printConfig.reportTitle?.trim()
+            ? printConfig.reportTitle.trim().replace(/[^a-zA-Z0-9-_\.]/g, '_') + '.pdf'
+            : (reportId ? `${reportId}.pdf` : 'delegation-report.pdf');
+
+          const disposition = downloadResponse.headers.get('Content-Disposition');
+          if (disposition && disposition.indexOf('filename=') !== -1) {
+            const match = disposition.match(/filename="?([^";]+)"?/);
+            if (match && match[1]) filename = match[1];
+          }
+
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        } catch (err) {
+          notify('Failed to download report', { type: 'error' });
+        }
+      } else {
+        notify(result.error || 'Report generation failed', { type: 'error' });
+      }
+    } catch (error) {
+      console.error('[Poll Report] Error:', error);
+      notify('Failed to check report status', { type: 'error' });
+    }
   };
 
   return (
@@ -763,14 +665,7 @@ export const DelegationLog = () => {
               )}
               <div>
                 <div className="small text-muted">Record Hash (21 CFR Part 11 Compliance)</div>
-                <div
-                  className="font-monospace small text-break"
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#6c757d',
-                    wordBreak: 'break-all'
-                  }}
-                >
+                <div className="font-monospace text-xs text-text-subtle break-all">
                   {viewingDelegation.recordHash || 'Not available'}
                 </div>
               </div>
@@ -846,7 +741,7 @@ export const DelegationLog = () => {
               <CFormLabel className="fw-semibold">Scope Filter</CFormLabel>
               <CFormSelect
                 value={printConfig.scopeFilter}
-                onChange={(e) => setPrintConfig({...printConfig, scopeFilter: e.target.value})}
+                onChange={(e) => setPrintConfig({...printConfig, scopeFilter: e.target.value as DelegationReportConfig['scopeFilter']})}
               >
                 <option value="current">Current View/Filters Applied</option>
                 <option value="all">All Delegations (Ignore Current Filters)</option>
@@ -949,7 +844,7 @@ export const DelegationLog = () => {
                     id="formatPdfSigned"
                     value="pdf-signed"
                     checked={printConfig.reportFormat === 'pdf-signed'}
-                    onChange={(e) => setPrintConfig({...printConfig, reportFormat: e.target.value})}
+                    onChange={(e) => setPrintConfig({...printConfig, reportFormat: e.target.value as DelegationReportConfig['reportFormat']})}
                   />
                   <label className="form-check-label" htmlFor="formatPdfSigned">
                     <strong>PDF (Signed)</strong> - Recommended for regulatory audits
@@ -964,7 +859,7 @@ export const DelegationLog = () => {
                     id="formatPdf"
                     value="pdf"
                     checked={printConfig.reportFormat === 'pdf'}
-                    onChange={(e) => setPrintConfig({...printConfig, reportFormat: e.target.value})}
+                    onChange={(e) => setPrintConfig({...printConfig, reportFormat: e.target.value as DelegationReportConfig['reportFormat']})}
                   />
                   <label className="form-check-label" htmlFor="formatPdf">
                     <strong>PDF (Standard)</strong> - Printable document
@@ -979,7 +874,7 @@ export const DelegationLog = () => {
                     id="formatCsv"
                     value="csv"
                     checked={printConfig.reportFormat === 'csv'}
-                    onChange={(e) => setPrintConfig({...printConfig, reportFormat: e.target.value})}
+                    onChange={(e) => setPrintConfig({...printConfig, reportFormat: e.target.value as DelegationReportConfig['reportFormat']})}
                   />
                   <label className="form-check-label" htmlFor="formatCsv">
                     <strong>CSV (Excel)</strong> - Data export

@@ -17,7 +17,7 @@ import { ENV } from '../config/env';
 import { useAuth } from '../contexts/AuthContext';
 import { api, delegationService } from '../services/apiClient';
 import { AppFooter } from '../components/common/AppFooter';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 import { IconButton } from 'react-native-paper';
 import { DelegationDetailsModal } from '../components/modals/DelegationDetailsModal';
 import { DelegationReportModal } from '../components/modals/DelegationReportModal';

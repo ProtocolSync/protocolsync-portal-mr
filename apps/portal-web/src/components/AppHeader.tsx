@@ -12,8 +12,7 @@ export const AppHeader = () => {
     <CHeader position="sticky" className="mb-4 p-0">
       <CContainer fluid className="border-bottom px-4">
         <CHeaderToggler
-          className="ps-1"
-          style={{ marginInlineStart: '-14px' }}
+          className="ps-1 -ms-3.5"
           onClick={toggleSidebar}
         >
           <CIcon icon={cilMenu} size="lg" />

@@ -10,7 +10,7 @@ import {
   CFormLabel,
   CAlert
 } from '@coreui/react';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNotify, useRefresh } from 'react-admin';
 import { sitesService } from '../apiClient';
 
@@ -26,7 +26,7 @@ interface SiteStatusModalProps {
 }
 
 export const SiteStatusModal = ({ visible, onClose, site }: SiteStatusModalProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const notify = useNotify();
   const refresh = useRefresh();
   const [reason, setReason] = useState('');

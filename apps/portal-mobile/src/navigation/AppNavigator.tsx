@@ -19,7 +19,7 @@ import { Text } from 'react-native';
 import { AppHeader } from '../components/common/AppHeader';
 import { AppSidebar } from '../components/common/AppSidebar';
 import { FloatingHelpButton } from '../components/common/FloatingHelpButton';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 export type RootStackParamList = {
   Login: undefined;

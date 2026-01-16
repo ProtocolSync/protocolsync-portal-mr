@@ -8,7 +8,7 @@ import { TrialLeadDashboard } from '../components/dashboards/TrialLeadDashboard'
 import { SiteUserDashboard } from '../components/dashboards/SiteUserDashboard';
 import { DrawerScreenProps } from '@react-navigation/drawer';
 import { DrawerParamList } from '../navigation/AppNavigator';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 type HomeScreenProps = DrawerScreenProps<DrawerParamList, 'Home'>;
 

@@ -8,7 +8,7 @@ import { trialsService } from '../services/apiClient';
 import { AppFooter } from '../components/common/AppFooter';
 import { AddTrialModal } from '../components/modals/AddTrialModal';
 import { TrialDetailModal } from '../components/modals/TrialDetailModal';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 import type { Trial } from '@protocolsync/shared-services';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';

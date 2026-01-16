@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 const { width } = Dimensions.get('window');
 const isLargeScreen = width > 768;
@@ -151,11 +151,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: designTokens.color.background.card,
     borderRadius: 8,
-    shadowColor: designTokens.shadow.card.shadowColor,
-    shadowOffset: designTokens.shadow.card.shadowOffset,
-    shadowOpacity: designTokens.shadow.card.shadowOpacity,
-    shadowRadius: designTokens.shadow.card.shadowRadius,
-    elevation: designTokens.shadow.card.elevation,
+    shadowColor: designTokens.shadowMobile.card.shadowColor,
+    shadowOffset: designTokens.shadowMobile.card.shadowOffset,
+    shadowOpacity: designTokens.shadowMobile.card.shadowOpacity,
+    shadowRadius: designTokens.shadowMobile.card.shadowRadius,
+    elevation: designTokens.shadowMobile.card.elevation,
   },
   cardLarge: {
     flex: 1,

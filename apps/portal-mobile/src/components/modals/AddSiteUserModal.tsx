@@ -10,10 +10,9 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { ENV } from '../../config/env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
-import designTokens from '../../design-tokens.json';
+import { sitesService } from '../../services/apiClient';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface AddSiteUserModalProps {
   visible: boolean;
@@ -31,10 +30,6 @@ export const AddSiteUserModal = ({ visible, siteId, onClose, onSuccess }: AddSit
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const getAuthToken = async () => {
-    return await AsyncStorage.getItem('access_token') || '';
-  };
-
   const handleSubmit = async () => {
     if (!formData.email || !formData.name) {
       Alert.alert('Error', 'Email and Full Name are required');
@@ -49,8 +44,6 @@ export const AddSiteUserModal = ({ visible, siteId, onClose, onSuccess }: AddSit
     setIsSubmitting(true);
 
     try {
-      const token = await getAuthToken();
-
       const requestBody = {
         email: formData.email,
         name: formData.name,
@@ -61,26 +54,16 @@ export const AddSiteUserModal = ({ visible, siteId, onClose, onSuccess }: AddSit
       console.log('[AddSiteUserModal] Provisioning site user for site:', siteId);
       console.log('[AddSiteUserModal] Request body:', requestBody);
 
-      const response = await fetch(`${ENV.API_URL}/sites/${siteId}/users/provision`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Key': ENV.API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await sitesService.provisionSiteUser(siteId, requestBody);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to add site user' }));
-        throw new Error(errorData.error || `Failed to add site user (${response.status})`);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to add site user');
       }
 
-      const result = await response.json();
-      console.log('[AddSiteUserModal] Site user provisioned:', result);
+      console.log('[AddSiteUserModal] Site user provisioned:', response.data);
 
       Alert.alert('Success', `${formData.email} has been provisioned successfully. They will receive an invitation email.`);
-      
+
       // Reset form
       setFormData({
         email: '',

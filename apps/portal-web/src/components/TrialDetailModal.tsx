@@ -13,6 +13,7 @@ import {
   CRow,
   CCol
 } from '@coreui/react';
+import { apiScopes } from '../authConfig';
 
 interface TrialDetailModalProps {
   trialId: number;
@@ -53,7 +54,7 @@ export const TrialDetailModal = ({ trialId, onClose }: TrialDetailModalProps) =>
 
     try {
       const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
+        scopes: apiScopes,
         account: accounts[0]
       });
       return tokenResponse.accessToken;
@@ -256,15 +257,7 @@ export const TrialDetailModal = ({ trialId, onClose }: TrialDetailModalProps) =>
                 <div className="mb-3">
                   <strong className="text-muted small d-block">Team Members</strong>
                   <div>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '4px 12px',
-                      borderRadius: '4px',
-                      backgroundColor: '#e0e7ff',
-                      color: '#3730a3',
-                      fontWeight: 500
-                    }}>
+                    <span className="inline-flex items-center px-3 py-1 rounded bg-indigo-100 text-indigo-800 font-medium">
                       {trial.assigned_user_count} {trial.assigned_user_count === 1 ? 'member' : 'members'}
                     </span>
                   </div>
@@ -289,16 +282,7 @@ export const TrialDetailModal = ({ trialId, onClose }: TrialDetailModalProps) =>
             {trial.record_hash && (
               <div className="mb-3">
                 <strong className="text-muted small d-block">Record Hash (21 CFR Part 11)</strong>
-                <div style={{
-                  fontFamily: 'monospace',
-                  fontSize: '0.75rem',
-                  wordBreak: 'break-all',
-                  color: '#6c757d',
-                  backgroundColor: '#f8f9fa',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #dee2e6'
-                }}>
+                <div className="font-mono text-xs break-all text-text-subtle bg-background-subtle p-2 rounded border border-border-light">
                   {trial.record_hash}
                 </div>
               </div>

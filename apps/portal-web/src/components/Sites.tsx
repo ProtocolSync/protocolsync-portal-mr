@@ -10,18 +10,18 @@ import {
 import { CButton, CBadge } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilPlus, cilLockLocked, cilLockUnlocked } from '@coreui/icons';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import { AddSiteModal } from './AddSiteModal';
 import { SiteDetailModal } from './SiteDetailModal';
 import { SiteStatusModal } from './SiteStatusModal';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { Box, Typography, useMediaQuery } from '@mui/material';
-import { designTokens } from '../design-tokens';
+import { designTokens } from '@protocolsync/shared-styles/design-tokens';
 
 const ToggleSiteStatusButton = () => {
   const record = useRecordContext();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [showStatusModal, setShowStatusModal] = useState(false);
 
   if (!record) return null;
@@ -144,7 +144,7 @@ const EmptySitesList = ({ onCreateClick }: { onCreateClick: () => void }) => {
 const MobileSiteCard = ({ record }: { record: any }) => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const { user } = useUser();
+  const { user } = useAuth();
 
   if (!record) return null;
 
@@ -308,7 +308,7 @@ const SitesDatagrid = ({ onCreateClick }: { onCreateClick: () => void }) => {
 };
 
 export const Sites = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const refresh = useRefresh();
   const [showAddModal, setShowAddModal] = useState(false);
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, ScrollView, View, StyleSheet, TextInput, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 export interface AddUserFormData {
   role: string;

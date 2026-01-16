@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useUser } from './UserContext';
+import { useAuth } from './AuthContext';
 import type { Role } from '@protocolsync/shared-types';
 import { ROLE_LABELS } from '@protocolsync/shared-constants';
 
@@ -18,7 +18,7 @@ interface RoleProviderProps {
 }
 
 export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [activeRole, setActiveRoleState] = useState<Role | null>(null);
 
   // Initialize active role to user's actual role

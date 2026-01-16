@@ -14,7 +14,7 @@ import {
 import { CButton, CBadge, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilPlus, cilX } from '@coreui/icons';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import { AddSiteAdministratorModal } from './AddSiteAdministratorModal';
 import { AdministratorDetailModal } from './AdministratorDetailModal';
@@ -233,7 +233,7 @@ const SiteAdministratorsDatagrid = ({ onViewDetails }: { onViewDetails: (admin: 
 };
 
 export const SiteAdministrators = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const refresh = useRefresh();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<any>(null);

@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
-import { 
-  Title, 
+import {
+  Title,
   useNotify,
   Datagrid,
   TextField,
   FunctionField
 } from 'react-admin';
 import { Box, Typography, useMediaQuery } from '@mui/material';
-import { useUser } from '../contexts/UserContext';
-import { useMsal } from '@azure/msal-react';
-import { 
+import { useAuth } from '../contexts/AuthContext';
+import {
   CButton,
   CBadge
 } from '@coreui/react';
@@ -18,7 +17,7 @@ import CIcon from '@coreui/icons-react';
 import { cilCheckCircle, cilXCircle, cilCommentSquare } from '@coreui/icons';
 import { ChatWidget } from '../widgets/ChatWidget';
 import '../widgets/ChatWidget/styles/ChatWidget.css';
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { delegationService } from '../apiClient';
 
 interface Protocol {
   id: string;
@@ -190,7 +189,7 @@ const MyProtocolsDatagrid = ({
       <FunctionField
         label="Actions"
         render={(record: Protocol) => (
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="flex gap-2 flex-wrap">
             {record.status === 'pending' && (
               <>
                 <CButton
@@ -232,8 +231,7 @@ const MyProtocolsDatagrid = ({
 };
 
 export const MyProtocols = () => {
-  const { user } = useUser();
-  const { instance } = useMsal();
+  const { user, getToken } = useAuth();
   const notify = useNotify();
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,49 +240,30 @@ export const MyProtocols = () => {
   const [authToken, setAuthToken] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  // Get auth token
+  // Get auth token for ChatWidget
   useEffect(() => {
-    const getToken = async () => {
-      const accounts = instance.getAllAccounts();
-      if (accounts.length > 0) {
-        try {
-          const response = await instance.acquireTokenSilent({
-            scopes: ['User.Read'],
-            account: accounts[0]
-          });
-          setAuthToken(response.accessToken);
-        } catch (error) {
-          console.error('Failed to acquire token:', error);
-        }
+    const fetchToken = async () => {
+      try {
+        const token = await getToken();
+        setAuthToken(token);
+      } catch (error) {
+        console.error('Failed to acquire token:', error);
       }
     };
-    getToken();
-  }, [instance]);
+    fetchToken();
+  }, [getToken]);
 
   const fetchDelegatedProtocols = async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoading(true);
-      
-      // Fetch delegations for this user
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${authToken}`,
-      };
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      
-      const response = await fetch(
-        `${API_BASE_URL}/compliance/delegations?user_id=${user.id}`,
-        { headers }
-      );
-      
-      const data = await response.json();
-      
-      if (data.success && data.data) {
-        const delegatedProtocols = data.data.map((delegation: any) => ({
+
+      // Use DelegationService to fetch delegations
+      const response = await delegationService.getDelegations(user.id);
+
+      if (response.success && response.data) {
+        const delegatedProtocols = response.data.map((delegation: any) => ({
           id: delegation.protocol_version_id,
           delegationId: delegation.delegation_id,
           protocolName: delegation.protocol_name || 'Untitled Protocol',
@@ -294,7 +273,7 @@ export const MyProtocols = () => {
           delegatedRole: delegation.delegated_job_title,
           delegatedDate: delegation.delegation_date
         }));
-        
+
         setProtocols(delegatedProtocols);
       }
     } catch (error) {
@@ -306,40 +285,28 @@ export const MyProtocols = () => {
 
   useEffect(() => {
     fetchDelegatedProtocols();
-  }, [user, authToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleAcceptDecline = async (delegationId: number, action: 'accept' | 'decline') => {
     if (!user?.id) return;
 
     try {
       setActionLoading(delegationId);
-      
-      //const apiBaseUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(
-        `${API_BASE_URL}/compliance/delegation/${delegationId}/sign`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
-            'X-API-Key': import.meta.env.VITE_API_KEY || ''
-          },
-          body: JSON.stringify({
-            user_id: user.id,
-            action: action,
-            printed_name: user.displayName
-          })
-        }
+
+      const response = await delegationService.signDelegation(
+        delegationId,
+        user.id,
+        action,
+        user.displayName || ''
       );
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         notify(`Delegation ${action}ed successfully`, { type: 'success' });
         // Refresh the list
         await fetchDelegatedProtocols();
       } else {
-        notify(data.error || `Failed to ${action} delegation`, { type: 'error' });
+        notify(response.error || `Failed to ${action} delegation`, { type: 'error' });
       }
     } catch (error) {
       console.error(`Error ${action}ing delegation:`, error);

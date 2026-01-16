@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Title } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useMsal } from '@azure/msal-react';
-import { 
-  CCard, 
-  CCardBody, 
-  CCardHeader, 
+import {
+  CCard,
+  CCardBody,
+  CCardHeader,
   CSpinner,
   CBadge,
   CTable,
@@ -18,6 +18,7 @@ import {
   CCol
 } from '@coreui/react';
 import { VersionBadge } from './VersionBadge';
+import { apiScopes } from '../authConfig';
 import { Box, Typography, useMediaQuery } from '@mui/material';
 
 interface Delegation {
@@ -90,7 +91,7 @@ const MobileDelegationCard = ({ delegation }: { delegation: Delegation }) => {
 };
 
 export const SiteUserDashboard = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { instance } = useMsal();
   const [delegations, setDelegations] = useState<Delegation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +114,7 @@ export const SiteUserDashboard = () => {
         if (accounts.length > 0) {
           try {
             const tokenResponse = await instance.acquireTokenSilent({
-              scopes: ['User.Read'],
+              scopes: apiScopes,
               account: accounts[0]
             });
             authToken = tokenResponse.accessToken;

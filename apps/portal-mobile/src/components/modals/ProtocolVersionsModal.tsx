@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { IconButton } from 'react-native-paper';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 import { useAuth } from '../../contexts/AuthContext';
 import { protocolDocumentsService } from '../../services/apiClient';
 import { ProtocolVersion } from '@protocolsync/shared-services';

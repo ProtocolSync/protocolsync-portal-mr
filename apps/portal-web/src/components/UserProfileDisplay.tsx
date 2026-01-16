@@ -1,4 +1,4 @@
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useRole } from '../contexts/RoleContext';
 import { useMsal } from '@azure/msal-react';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +6,7 @@ import { CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem, CButton } fro
 import type { Role } from '@protocolsync/shared-types';
 
 export const UserProfileDisplay = () => {
-  const { user, loading, error } = useUser();
+  const { user, loading, error } = useAuth();
   const { activeRole, setActiveRole, canSwitchRole, availableRoles } = useRole();
   const { instance } = useMsal();
   const navigate = useNavigate();
@@ -72,11 +72,10 @@ export const UserProfileDisplay = () => {
       
       {canSwitchRole ? (
         <CDropdown variant="btn-group">
-          <CDropdownToggle 
+          <CDropdownToggle
             color="success"
             size="sm"
-            className="text-xs font-semibold uppercase px-2 py-1 text-white"
-            style={{ fontSize: '0.75rem', lineHeight: '1rem' }}
+            className="text-xs font-semibold uppercase px-2 py-1 text-white leading-4"
           >
             {displayRole}
           </CDropdownToggle>
@@ -97,8 +96,7 @@ export const UserProfileDisplay = () => {
         <CButton
           color="success"
           size="sm"
-          className="text-xs font-semibold uppercase px-2 py-1 text-white"
-          style={{ fontSize: '0.75rem', lineHeight: '1rem', cursor: 'default', pointerEvents: 'none' }}
+          className="text-xs font-semibold uppercase px-2 py-1 text-white leading-4 cursor-default pointer-events-none"
         >
           {displayRole}
         </CButton>

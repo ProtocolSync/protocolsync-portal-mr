@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { useUser } from '../contexts/UserContext';
-import { designTokens } from '../design-tokens';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { useAuth } from '../contexts/AuthContext';
+import { billingService } from '../apiClient';
 
 interface PaymentMethodFormProps {
   onSuccess: () => void;
 }
 
 export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [cardholderName, setCardholderName] = useState(user?.displayName || '');
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,39 +42,17 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
     setError(null);
 
     try {
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      // Step 1: Create setup intent from backend
-      const setupResponse = await fetch(
-        `${API_BASE_URL}/companies/${user.company.id}/payment/setup-intent`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            requester_role: 'admin',
-            user_id: user.id
-          })
-        }
+      // Step 1: Create setup intent using BillingService
+      const clientSecret = await billingService.createSetupIntent(
+        parseInt(user.company.id),
+        parseInt(user.id.toString())
       );
-
-      if (!setupResponse.ok) {
-        const errorData = await setupResponse.json();
-        throw new Error(errorData.message || 'Failed to create setup intent');
-      }
-
-      const setupData = await setupResponse.json();
-      const clientSecret = setupData.data.client_secret;
 
       // Step 2: Confirm card setup with Stripe (use the same instance)
       if (!stripeInstance) {
         throw new Error('Stripe not initialized');
       }
-      
+
       // @ts-ignore
       const cardElement = window.cardElement;
 
@@ -101,25 +77,13 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
         throw new Error('No payment method returned');
       }
 
-      // Step 3: Save payment method to backend
-      const saveResponse = await fetch(
-        `${API_BASE_URL}/companies/${user.company.id}/payment-methods`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            payment_method_id: setupIntent.payment_method,
-            user_id: user.id,
-            requester_role: 'admin',
-            set_as_default: true
-          })
-        }
+      // Step 3: Save payment method using BillingService
+      await billingService.savePaymentMethod(
+        parseInt(user.company.id),
+        parseInt(user.id.toString()),
+        setupIntent.payment_method,
+        true
       );
-
-      if (!saveResponse.ok) {
-        const errorData = await saveResponse.json();
-        throw new Error(errorData.message || 'Failed to save payment method');
-      }
 
       // Success!
       setProcessing(false);
@@ -231,13 +195,7 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
             type="checkbox"
             checked={agreedToTerms}
             onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="mt-1"
-            style={{ 
-              width: '16px', 
-              height: '16px', 
-              cursor: 'pointer',
-              accentColor: designTokens.color.brand.accentGreen500
-            }}
+            className="mt-1 w-4 h-4 cursor-pointer accent-brand-accentGreen"
           />
           <span className="text-sm text-gray-700">
             I agree to the{' '}
@@ -245,8 +203,7 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
               href={`${import.meta.env.VITE_WEBSITE_URL}/terms`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: designTokens.color.brand.accentGreen500 }}
-              className="font-semibold hover:underline"
+              className="font-semibold hover:underline text-brand-accentGreen"
             >
               Terms of Service
             </a>
@@ -257,33 +214,14 @@ export const PaymentMethodForm = ({ onSuccess }: PaymentMethodFormProps) => {
       <button
         type="submit"
         disabled={processing || !cardElementReady || !agreedToTerms}
-        style={{
-          backgroundColor: processing || !cardElementReady || !agreedToTerms
-            ? designTokens.color.text.subtle
-            : designTokens.color.brand.accentGreen500,
-          color: designTokens.color.text.inverse,
-          padding: `${designTokens.spacing.s} ${designTokens.spacing.m}`,
-          borderRadius: designTokens.borderRadius.default,
-          border: 'none',
-          fontSize: designTokens.typography.fontSize.m,
-          fontWeight: designTokens.typography.fontWeight.semibold,
-          cursor: processing || !cardElementReady || !agreedToTerms ? 'not-allowed' : 'pointer',
-          width: '100%',
-          transition: 'all 0.2s ease',
-          boxShadow: processing || !cardElementReady || !agreedToTerms ? 'none' : designTokens.shadow.default,
-        }}
-        onMouseEnter={(e) => {
-          if (!processing && cardElementReady && agreedToTerms) {
-            e.currentTarget.style.backgroundColor = designTokens.color.brand.accentGreen700;
-            e.currentTarget.style.boxShadow = designTokens.shadow.lifted;
+        className={`
+          w-full py-4 px-6 rounded border-none text-base font-semibold text-text-inverse
+          transition-all duration-200 ease-in-out
+          ${processing || !cardElementReady || !agreedToTerms
+            ? 'bg-text-subtle cursor-not-allowed shadow-none'
+            : 'bg-brand-accentGreen cursor-pointer shadow-default hover:bg-brand-accentGreen-700 hover:shadow-lifted'
           }
-        }}
-        onMouseLeave={(e) => {
-          if (!processing && cardElementReady && agreedToTerms) {
-            e.currentTarget.style.backgroundColor = designTokens.color.brand.accentGreen500;
-            e.currentTarget.style.boxShadow = designTokens.shadow.default;
-          }
-        }}
+        `}
       >
         {processing ? 'Processing...' : 'Save Payment Method'}
       </button>

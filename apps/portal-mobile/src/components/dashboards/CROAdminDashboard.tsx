@@ -3,16 +3,10 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, 
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../contexts/AuthContext';
-import { ENV } from '../../config/env';
+import { sitesService, usersService } from '../../services/apiClient';
 import { AppFooter } from '../common/AppFooter';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
-interface Site {
-  id: string;
-  site_name: string;
-  site_number: string;
-  status: string;
-}
 
 interface DashboardStats {
   totalSites: number;
@@ -47,7 +41,6 @@ export const CROAdminDashboard = ({ navigation }: CROAdminDashboardProps) => {
   const fetchDashboardData = async () => {
     try {
       console.log('🔄 Fetching dashboard data...');
-      console.log('API URL:', ENV.API_URL);
       console.log('User:', user);
       console.log('Company ID:', user?.company?.id);
 
@@ -57,69 +50,39 @@ export const CROAdminDashboard = ({ navigation }: CROAdminDashboardProps) => {
         return;
       }
 
-      // Fetch sites
-      const sitesUrl = `${ENV.API_URL}/sites`;
-      console.log('Fetching sites from:', sitesUrl);
+      // Fetch sites, admins, and users in parallel using shared services
+      const [sitesResponse, adminsResponse, usersResponse] = await Promise.all([
+        sitesService.getSites(companyId),
+        sitesService.getSiteAdministrators(companyId),
+        usersService.getCompanyUsers(companyId),
+      ]);
 
-      const sitesResponse = await fetch(sitesUrl, {
-        headers: {
-          'X-API-Key': ENV.API_KEY,
-        },
-      });
-
-      if (!sitesResponse.ok) {
-        const errorText = await sitesResponse.text();
-        console.error('Sites API error:', sitesResponse.status, errorText);
-        throw new Error(`Sites API error: ${sitesResponse.status}`);
+      if (!sitesResponse.success) {
+        console.error('Sites API error:', sitesResponse.error);
+        throw new Error(sitesResponse.error || 'Failed to fetch sites');
       }
 
-      const sitesResult = await sitesResponse.json();
-      const sitesData = sitesResult.data || sitesResult;
+      if (!adminsResponse.success) {
+        console.error('Admins API error:', adminsResponse.error);
+        throw new Error(adminsResponse.error || 'Failed to fetch administrators');
+      }
+
+      if (!usersResponse.success) {
+        console.error('Users API error:', usersResponse.error);
+        throw new Error(usersResponse.error || 'Failed to fetch users');
+      }
+
+      const sitesData = sitesResponse.data || [];
+      const adminsData = adminsResponse.data || [];
+      const usersData = usersResponse.data || [];
+
       console.log('✅ Sites fetched:', sitesData.length);
-
-      // Fetch admins - using company-specific endpoint
-      const adminsUrl = `${ENV.API_URL}/companies/${companyId}/site-administrators`;
-      console.log('Fetching admins from:', adminsUrl);
-
-      const adminsResponse = await fetch(adminsUrl, {
-        headers: {
-          'X-API-Key': ENV.API_KEY,
-        },
-      });
-
-      if (!adminsResponse.ok) {
-        const errorText = await adminsResponse.text();
-        console.error('Admins API error:', adminsResponse.status, errorText);
-        throw new Error(`Admins API error: ${adminsResponse.status}`);
-      }
-
-      const adminsResult = await adminsResponse.json();
-      const adminsData = adminsResult.data || adminsResult;
       console.log('✅ Admins fetched:', adminsData.length);
-
-      // Fetch users - using company-specific endpoint
-      const usersUrl = `${ENV.API_URL}/companies/${companyId}/users`;
-      console.log('Fetching users from:', usersUrl);
-
-      const usersResponse = await fetch(usersUrl, {
-        headers: {
-          'X-API-Key': ENV.API_KEY,
-        },
-      });
-
-      if (!usersResponse.ok) {
-        const errorText = await usersResponse.text();
-        console.error('Users API error:', usersResponse.status, errorText);
-        throw new Error(`Users API error: ${usersResponse.status}`);
-      }
-
-      const usersResult = await usersResponse.json();
-      const usersData = usersResult.data || usersResult;
       console.log('✅ Users fetched:', usersData.length);
 
       setStats({
         totalSites: sitesData.length,
-        activeSites: sitesData.filter((s: Site) => s.status === 'active').length,
+        activeSites: sitesData.filter((s) => s.status === 'active').length,
         totalAdmins: adminsData.length,
         totalUsers: usersData.length,
         subscriptionStatus: 'active', // TODO: Get from user company data
@@ -127,12 +90,6 @@ export const CROAdminDashboard = ({ navigation }: CROAdminDashboardProps) => {
       });
 
       console.log('✅ Dashboard data loaded successfully');
-      console.log('📊 Stats:', {
-        totalSites: sitesData.length,
-        activeSites: sitesData.filter((s: Site) => s.status === 'active').length,
-        totalAdmins: adminsData.length,
-        totalUsers: usersData.length,
-      });
     } catch (error) {
       console.error('❌ Error fetching dashboard data:', error);
     } finally {

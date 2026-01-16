@@ -3,7 +3,7 @@ import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { Text, TextInput, Button, Checkbox } from 'react-native-paper';
 import { WebView } from 'react-native-webview';
 import { useAuth } from '../contexts/AuthContext';
-import _designTokens  from '../constants/designTokens';
+import _designTokens  from '@protocolsync/shared-styles/mobile/tokens';
 import { billingService } from '../services/apiClient';
 
 interface PaymentMethodFormProps {

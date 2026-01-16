@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNotify } from 'react-admin';
-import { useMsal } from '@azure/msal-react';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { trialsService, protocolDocumentsService } from '../apiClient';
 import {
   CModal,
   CModalHeader,
@@ -33,8 +33,7 @@ interface Trial {
 
 export const ProtocolUploadModal = ({ isOpen, siteId, onClose, onUploadSuccess }: ProtocolUploadModalProps) => {
   const notify = useNotify();
-  const { instance } = useMsal();
-  const { user } = useUser();
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [documentName, setDocumentName] = useState('');
   const [versionNumber, setVersionNumber] = useState('');
@@ -46,50 +45,21 @@ export const ProtocolUploadModal = ({ isOpen, siteId, onClose, onUploadSuccess }
   const fetchTrials = useCallback(async () => {
     try {
       setLoadingTrials(true);
-      const accounts = instance.getAllAccounts();
-      let authToken = '';
 
-      if (accounts.length > 0) {
-        try {
-          const tokenResponse = await instance.acquireTokenSilent({
-            scopes: ['User.Read'],
-            account: accounts[0]
-          });
-          authToken = tokenResponse.accessToken;
-        } catch (error) {
-          console.error('Failed to acquire token:', error);
-        }
-      }
+      // Use TrialsService to fetch trials for the site
+      const response = await trialsService.getTrials({ siteId });
 
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      };
-
-      const apiKey = import.meta.env.VITE_API_KEY;
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const API_BASE_URL = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${API_BASE_URL}/trials?site_id=${siteId}`, {
-        headers
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch trials');
-      }
-
-      const result = await response.json();
-      if (result.success && result.data) {
+      if (response.success && response.data) {
         // Filter to only active trials
-        const activeTrials = result.data.filter((t: Trial) => t.status === 'active');
+        const activeTrials = response.data.filter((t: Trial) => t.status === 'active');
         setTrials(activeTrials);
 
         // Auto-select first trial if available
         if (activeTrials.length > 0) {
           setSelectedTrialId(activeTrials[0].trial_id.toString());
         }
+      } else {
+        throw new Error(response.error || 'Failed to fetch trials');
       }
     } catch (error) {
       console.error('Error fetching trials:', error);
@@ -97,7 +67,7 @@ export const ProtocolUploadModal = ({ isOpen, siteId, onClose, onUploadSuccess }
     } finally {
       setLoadingTrials(false);
     }
-  }, [instance, siteId, notify]);
+  }, [siteId, notify]);
 
   // Fetch trials when modal opens
   useEffect(() => {
@@ -144,71 +114,20 @@ export const ProtocolUploadModal = ({ isOpen, siteId, onClose, onUploadSuccess }
     setUploading(true);
 
     try {
-      // Get JWT token
-      const accounts = instance.getAllAccounts();
-      let authToken = '';
-      
-      if (accounts.length > 0) {
-        try {
-          const tokenResponse = await instance.acquireTokenSilent({
-            scopes: ['User.Read'],
-            account: accounts[0]
-          });
-          authToken = tokenResponse.accessToken;
-        } catch (error) {
-          console.error('Failed to acquire token:', error);
-        }
-      }
-
-      const formData = new FormData();
-      formData.append('document', file); // Backend expects 'document' field name
-      formData.append('document_type', documentName);
-      formData.append('document_version', versionNumber);
-      formData.append('site_id', siteId); // Required for multi-tenant security
-      formData.append('trial_id', selectedTrialId); // Required for trial isolation
-
-      // Send user_id from authenticated user context
-      if (user?.id) {
-        formData.append('user_id', user.id.toString());
-        console.log('[Upload] Adding user_id to upload:', user.id);
-      }
-
-      // Log what we're sending
-      console.log('[Upload] FormData contents:', {
-        document: file.name,
+      // Use ProtocolDocumentsService to upload
+      const response = await protocolDocumentsService.uploadProtocol({
+        document: file,
         document_type: documentName,
         document_version: versionNumber,
         site_id: siteId,
         trial_id: selectedTrialId,
-        user_id: user?.id
+        user_id: user?.id?.toString()
       });
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL;
+      console.log('[Upload] Response:', response);
 
-      // Build headers with JWT token and API key
-      const headers: HeadersInit = {};
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      const apiKey = import.meta.env.VITE_API_KEY;
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/document/upload`, {
-        method: 'POST',
-        headers,
-        body: formData,
-        // Note: Don't set Content-Type header - browser will set it with boundary for multipart/form-data
-      });
-
-      const responseData = await response.json();
-      console.log('[Upload] Response:', { status: response.status, data: responseData });
-
-      if (!response.ok) {
-        const errorMessage = responseData.error || response.statusText;
-        throw new Error(`Upload failed: ${errorMessage}`);
+      if (!response.success) {
+        throw new Error(response.error || 'Upload failed');
       }
 
       notify('Protocol uploaded successfully', { type: 'success' });
@@ -224,7 +143,7 @@ export const ProtocolUploadModal = ({ isOpen, siteId, onClose, onUploadSuccess }
       onClose();
     } catch (error) {
       console.error('Upload error:', error);
-      notify('Failed to upload protocol', { type: 'error' });
+      notify(error instanceof Error ? error.message : 'Failed to upload protocol', { type: 'error' });
     } finally {
       setUploading(false);
     }

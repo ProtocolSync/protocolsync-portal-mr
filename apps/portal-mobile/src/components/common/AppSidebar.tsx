@@ -4,7 +4,7 @@ import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRole } from '../../contexts/RoleContext';
 import { HelpChatModal } from './HelpChatModal';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 export const AppSidebar = (props: DrawerContentComponentProps) => {
   const { user } = useAuth();

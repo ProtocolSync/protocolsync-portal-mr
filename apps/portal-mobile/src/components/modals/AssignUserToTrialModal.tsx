@@ -10,9 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { ENV } from '../../config/env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import designTokens from '../../design-tokens.json';
+import { trialsService } from '../../services/apiClient';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface AssignUserToTrialModalProps {
   visible: boolean;
@@ -45,24 +44,17 @@ export const AssignUserToTrialModal = ({ visible, user, siteId, onClose, onSucce
     }
   }, [visible]);
 
-  const getAuthToken = async () => {
-    return await AsyncStorage.getItem('access_token') || '';
-  };
-
   const fetchTrials = async () => {
     try {
       setLoadingTrials(true);
-      const token = await getAuthToken();
-      const response = await fetch(`${ENV.API_URL}/sites/${siteId}/trials`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Key': ENV.API_KEY,
-        },
-      });
+      const response = await trialsService.getTrialsBySite(siteId);
 
-      const result = await response.json();
-      if (result.success && result.data) {
-        setTrials(result.data);
+      if (response.success && response.data) {
+        setTrials(response.data.map((t: any) => ({
+          trial_id: t.trial_id,
+          trial_number: t.trial_number,
+          trial_name: t.trial_name,
+        })));
       }
     } catch (error) {
       console.error('Error fetching trials:', error);
@@ -80,36 +72,26 @@ export const AssignUserToTrialModal = ({ visible, user, siteId, onClose, onSucce
     setIsSubmitting(true);
 
     try {
-      const token = await getAuthToken();
-
-      const requestBody = {
-        user_id: user.user_id,
-        trial_id: parseInt(trialId),
-        trial_role: trialRole,
-      };
-
-      console.log('[AssignUserToTrialModal] Assigning user to trial:', requestBody);
-
-      const response = await fetch(`${ENV.API_URL}/trial-users`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Key': ENV.API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+      console.log('[AssignUserToTrialModal] Assigning user to trial:', {
+        trialId,
+        userId: user.user_id,
+        trialRole,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to assign user to trial' }));
-        throw new Error(errorData.error || `Failed to assign user to trial (${response.status})`);
+      const response = await trialsService.assignUserToTrial(
+        parseInt(trialId),
+        user.user_id,
+        trialRole
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to assign user to trial');
       }
 
-      const result = await response.json();
-      console.log('[AssignUserToTrialModal] User assigned to trial:', result);
+      console.log('[AssignUserToTrialModal] User assigned to trial:', response.data);
 
       Alert.alert('Success', `${user.name} has been assigned to the trial successfully.`);
-      
+
       onSuccess();
     } catch (error: any) {
       console.error('[AssignUserToTrialModal] Error:', error);

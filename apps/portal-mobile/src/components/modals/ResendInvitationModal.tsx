@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface User {
   user_id: number;

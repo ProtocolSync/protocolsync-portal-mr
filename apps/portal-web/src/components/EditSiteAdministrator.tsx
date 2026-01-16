@@ -9,10 +9,10 @@ import {
   useRedirect,
   useGetList
 } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const EditSiteAdministrator = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const notify = useNotify();
   const refresh = useRefresh();
   const redirect = useRedirect();

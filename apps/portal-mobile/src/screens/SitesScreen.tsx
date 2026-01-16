@@ -13,7 +13,7 @@ import { AppFooter } from '../components/common/AppFooter';
 import { SiteDetailModal } from '../components/modals/SiteDetailModal';
 import { AddSiteModal, type SiteFormData } from '../components/modals/AddSiteModal';
 import { DisableSiteModal } from '../components/modals/DisableSiteModal';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 export const SitesScreen = () => {
   const { user } = useAuth();

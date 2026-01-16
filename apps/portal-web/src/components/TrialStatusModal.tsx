@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNotify, useRefresh } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
-import { useMsal } from '@azure/msal-react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   CModal,
   CModalHeader,
@@ -14,6 +13,7 @@ import {
   CAlert,
   CBadge
 } from '@coreui/react';
+import { trialsService } from '../apiClient';
 
 interface TrialStatusModalProps {
   visible: boolean;
@@ -26,11 +26,8 @@ interface TrialStatusModalProps {
   };
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
 export const TrialStatusModal = ({ visible, onClose, trial }: TrialStatusModalProps) => {
-  const { user } = useUser();
-  const { instance } = useMsal();
+  const { user } = useAuth();
   const notify = useNotify();
   const refresh = useRefresh();
   const [reason, setReason] = useState('');
@@ -39,22 +36,6 @@ export const TrialStatusModal = ({ visible, onClose, trial }: TrialStatusModalPr
 
   const isActive = trial.status === 'active';
   const newStatus = isActive ? 'paused' : 'active';
-
-  const getAuthToken = async () => {
-    const accounts = instance.getAllAccounts();
-    if (accounts.length === 0) return '';
-
-    try {
-      const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
-        account: accounts[0]
-      });
-      return tokenResponse.accessToken;
-    } catch (error) {
-      console.error('Failed to acquire token:', error);
-      return '';
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,36 +49,16 @@ export const TrialStatusModal = ({ visible, onClose, trial }: TrialStatusModalPr
     setError(null);
 
     try {
-      const token = await getAuthToken();
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/trials/${trial.trial_id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          status: newStatus,
-          reason: reason || undefined,
-          updated_by_user_id: user.id
-        })
+      // Use TrialsService to update trial status
+      const response = await trialsService.updateTrial(trial.trial_id, {
+        status: newStatus
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: 'Failed to update trial status'
-        }));
-        throw new Error(errorData.error || `Failed to update trial status (${response.status})`);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update trial status');
       }
 
-      const result = await response.json();
-      console.log('[TrialStatusModal] Trial status updated:', result);
+      console.log('[TrialStatusModal] Trial status updated:', response.data);
 
       notify(
         `Trial ${trial.trial_number} ${isActive ? 'paused' : 'activated'} successfully.`,

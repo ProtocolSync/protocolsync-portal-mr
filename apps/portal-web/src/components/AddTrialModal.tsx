@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotify } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
-import { useMsal } from '@azure/msal-react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   CModal,
   CModalHeader,
@@ -17,6 +16,7 @@ import {
   CCol,
   CAlert
 } from '@coreui/react';
+import { sitesService, usersService, trialsService } from '../apiClient';
 
 interface TrialFormData {
   trial_number: string;
@@ -45,16 +45,13 @@ interface Site {
 
 interface User {
   user_id: number;
-  first_name: string;
-  last_name: string;
+  name: string;
   email: string;
+  role: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
 export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProps) => {
-  const { user } = useUser();
-  const { instance } = useMsal();
+  const { user } = useAuth();
   const notify = useNotify();
   const [formData, setFormData] = useState<TrialFormData>({
     trial_number: '',
@@ -74,37 +71,6 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
   const [users, setUsers] = useState<User[]>([]);
   const [loadingSites, setLoadingSites] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
-
-  const getAuthToken = async () => {
-    const accounts = instance.getAllAccounts();
-    if (accounts.length === 0) return '';
-
-    try {
-      const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
-        account: accounts[0]
-      });
-      return tokenResponse.accessToken;
-    } catch (error) {
-      console.error('Failed to acquire token:', error);
-      return '';
-    }
-  };
-
-  const getHeaders = async (): Promise<HeadersInit> => {
-    const token = await getAuthToken();
-    const apiKey = import.meta.env.VITE_API_KEY;
-    const headers: HeadersInit = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
-    }
-
-    return headers;
-  };
 
   // Auto-populate site_id for site admins when modal opens
   useEffect(() => {
@@ -128,18 +94,14 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
   const fetchSites = async () => {
     try {
       setLoadingSites(true);
-      const headers = await getHeaders();
-      const response = await fetch(`${API_BASE_URL}/companies/${user?.company?.id}/sites`, {
-        headers
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch sites');
-      }
+      // Use SitesService to fetch sites for company
+      const response = await sitesService.getSitesByCompany(user?.company?.id || '');
 
-      const result = await response.json();
-      if (result.success && result.data) {
-        setSites(result.data);
+      if (response.success && response.data) {
+        setSites(response.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch sites');
       }
     } catch (error) {
       console.error('Error fetching sites:', error);
@@ -152,22 +114,18 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      const headers = await getHeaders();
-      const response = await fetch(`${API_BASE_URL}/companies/${user?.company?.id}/users`, {
-        headers
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
+      // Use UsersService to fetch users for company
+      const response = await usersService.getCompanyUsers(user?.company?.id || '');
 
-      const result = await response.json();
-      if (result.success && result.data) {
+      if (response.success && response.data) {
         // Filter for users who can be PIs (admin, site_admin, or trial_lead roles)
-        const eligiblePIs = result.data.filter((u: any) =>
+        const eligiblePIs = response.data.filter((u: any) =>
           u.role === 'admin' || u.role === 'site_admin' || u.role === 'trial_lead'
         );
         setUsers(eligiblePIs);
+      } else {
+        throw new Error(response.error || 'Failed to fetch users');
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -194,8 +152,6 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
     setError(null);
 
     try {
-      const headers = await getHeaders();
-
       const requestBody = {
         site_id: parseInt(formData.site_id),
         trial_number: formData.trial_number,
@@ -207,25 +163,21 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
         indication: formData.indication || undefined,
         study_type: formData.study_type || undefined,
         pi_user_id: formData.pi_user_id ? parseInt(formData.pi_user_id) : undefined,
-        created_by_user_id: user.id
+        created_by_user_id: parseInt(user.id.toString()),
+        status: 'active' as const
       };
 
       console.log('[AddTrialModal] Creating trial for site:', formData.site_id);
       console.log('[AddTrialModal] Request body:', requestBody);
 
-      const response = await fetch(`${API_BASE_URL}/trials`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody)
-      });
+      // Use TrialsService to create trial
+      const response = await trialsService.createTrial(requestBody);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to create trial' }));
-        throw new Error(errorData.error || `Failed to create trial (${response.status})`);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create trial');
       }
 
-      const result = await response.json();
-      console.log('[AddTrialModal] Trial created:', result);
+      console.log('[AddTrialModal] Trial created:', response.data);
 
       notify(`Trial ${formData.trial_name} created successfully.`, { type: 'success' });
       setFormData({
@@ -420,7 +372,7 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
               </option>
               {users.map((u) => (
                 <option key={u.user_id} value={u.user_id}>
-                  {u.first_name} {u.last_name} ({u.email})
+                  {u.name} ({u.email})
                 </option>
               ))}
             </CFormSelect>

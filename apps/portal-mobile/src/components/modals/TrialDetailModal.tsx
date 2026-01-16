@@ -9,9 +9,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { ENV } from '../../config/env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import designTokens from '../../design-tokens.json';
+import { trialsService } from '../../services/apiClient';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface TrialDetailModalProps {
   trialId: number;
@@ -46,29 +45,18 @@ export const TrialDetailModal = ({ trialId, onClose }: TrialDetailModalProps) =>
     fetchTrialDetails();
   }, [trialId]);
 
-  const getAuthToken = async () => {
-    return await AsyncStorage.getItem('access_token') || '';
-  };
-
   const fetchTrialDetails = async () => {
     try {
       setLoading(true);
-      const token = await getAuthToken();
 
-      const response = await fetch(`${ENV.API_URL}/trials/${trialId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Key': ENV.API_KEY,
-        },
-      });
+      const response = await trialsService.getTrial(trialId);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch trial details');
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to fetch trial details');
       }
 
-      const result = await response.json();
-      if (result.success && result.data) {
-        setTrial(result.data);
+      if (response.data) {
+        setTrial(response.data as Trial);
       }
     } catch (error) {
       console.error('Error fetching trial details:', error);

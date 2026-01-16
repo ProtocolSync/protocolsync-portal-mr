@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from './Card';
 import { Title } from 'react-admin';
 import { CSpinner, CBadge } from '@coreui/react';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { trialsService } from '../apiClient';
 import { Box, Typography, useMediaQuery } from '@mui/material';
 import type { Trial } from '@protocolsync/shared-services';
@@ -61,7 +61,7 @@ const MobileTrialCard = ({ trial, getPhaseColor, getStatusColor }: { trial: Tria
 };
 
 export const SiteAdminDashboard = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [trials, setTrials] = useState<Trial[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +71,7 @@ export const SiteAdminDashboard = () => {
       try {
         setLoading(true);
 
-        // Get user ID from UserContext
+        // Get user ID from AuthContext
         const userId = user?.id;
 
         console.log('[SiteAdminDashboard] Fetching trials for user_id:', userId);

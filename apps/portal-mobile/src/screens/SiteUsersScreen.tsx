@@ -9,7 +9,7 @@ import { AppFooter } from '../components/common/AppFooter';
 import { AddSiteUserModal } from '../components/modals/AddSiteUserModal';
 import { UserDetailModal } from '../components/modals/UserDetailModal';
 import { AssignUserToTrialModal } from '../components/modals/AssignUserToTrialModal';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 

@@ -8,6 +8,7 @@ import { AppFooter } from './AppFooter';
 import { FloatingHelpButton } from './FloatingHelpButton';
 import { HelpChatWidget } from '../widgets/HelpChatWidget';
 import { SidebarProvider } from '../contexts/SidebarContext';
+import { apiScopes } from '../authConfig';
 
 export const CustomLayout = ({ children }: LayoutProps) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -25,7 +26,7 @@ export const CustomLayout = ({ children }: LayoutProps) => {
       if (accounts.length > 0) {
         try {
           const tokenResponse = await instance.acquireTokenSilent({
-            scopes: ['User.Read'],
+            scopes: apiScopes,
             account: accounts[0]
           });
           setAuthToken(tokenResponse.accessToken);

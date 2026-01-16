@@ -48,6 +48,13 @@ export interface AddSiteAdministratorData {
   requester_role: string;
 }
 
+export interface ProvisionSiteUserData {
+  email: string;
+  name: string;
+  job_title?: string;
+  provisioned_by_user_id: number;
+}
+
 export interface SiteAdministrator {
   user_id: number;
   name: string;
@@ -164,5 +171,43 @@ export class SitesService {
     adminData: AddSiteAdministratorData
   ): Promise<ApiResponse<any>> {
     return this.apiClient.post(`/companies/${companyId}/sites/${siteId}/administrator`, adminData);
+  }
+
+  async getSitesByCompany(companyId: number | string): Promise<ApiResponse<Site[]>> {
+    const response = await this.apiClient.get<any>(`/companies/${companyId}/sites`);
+
+    if (response.success && response.data !== undefined) {
+      // Handle nested data structure from backend
+      const data = response.data.data !== undefined ? response.data.data : response.data;
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : [data],
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch sites for company',
+    };
+  }
+
+  async provisionSiteUser(
+    siteId: number | string,
+    userData: ProvisionSiteUserData
+  ): Promise<ApiResponse<any>> {
+    const response = await this.apiClient.post<any>(`/sites/${siteId}/users/provision`, userData);
+
+    if (response.success && response.data !== undefined) {
+      const data = response.data.data !== undefined ? response.data.data : response.data;
+      return {
+        success: true,
+        data,
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to provision site user',
+    };
   }
 }

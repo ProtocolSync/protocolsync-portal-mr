@@ -11,7 +11,7 @@ import {
 import { Modal } from 'react-native';
 import { TextInput as PaperTextInput, HelperText } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface ReportCard {
   id: string;

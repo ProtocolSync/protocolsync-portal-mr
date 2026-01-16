@@ -2,7 +2,7 @@ import {
   useGetOne,
   useGetList
 } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Dialog,
   DialogTitle,
@@ -25,7 +25,7 @@ interface SiteDetailModalProps {
 }
 
 export const SiteDetailModal = ({ siteId, onClose }: SiteDetailModalProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
 
   // Fetch site data

@@ -5,7 +5,7 @@ import {
   useUpdate,
   useGetList
 } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -33,7 +33,7 @@ export const EditSiteAdministratorModal = ({
   onClose, 
   onSuccess 
 }: EditSiteAdministratorModalProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const notify = useNotify();
   const refresh = useRefresh();
   const [update, { isLoading: isUpdating }] = useUpdate();

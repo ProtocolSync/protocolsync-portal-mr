@@ -131,4 +131,53 @@ export class TrialsService {
   async deleteTrial(trialId: number | string): Promise<ApiResponse<void>> {
     return await this.apiClient.delete(`/trials/${trialId}`);
   }
+
+  async assignUserToTrial(
+    trialId: number | string,
+    userId: number | string,
+    trialRole: string
+  ): Promise<ApiResponse<any>> {
+    const response = await this.apiClient.post<any>(`/trials/${trialId}/users`, {
+      user_id: userId,
+      trial_role: trialRole,
+    });
+
+    if (response.success && response.data !== undefined) {
+      const data = response.data.data !== undefined ? response.data.data : response.data;
+      return {
+        success: true,
+        data,
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to assign user to trial',
+    };
+  }
+
+  async removeUserFromTrial(
+    trialId: number | string,
+    userId: number | string
+  ): Promise<ApiResponse<void>> {
+    return await this.apiClient.delete(`/trials/${trialId}/users/${userId}`);
+  }
+
+  async getTrialsBySite(siteId: number | string): Promise<ApiResponse<Trial[]>> {
+    const response = await this.apiClient.get<any>(`/sites/${siteId}/trials`);
+
+    if (response.success && response.data !== undefined) {
+      // Handle nested data structure from backend
+      const data = response.data.data !== undefined ? response.data.data : response.data;
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : [data],
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch trials for site',
+    };
+  }
 }

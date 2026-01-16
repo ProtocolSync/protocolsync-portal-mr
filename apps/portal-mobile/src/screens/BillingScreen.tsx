@@ -13,7 +13,7 @@ import type {
 import { LoadingState } from '../components/common/LoadingState';
 import { AppFooter } from '../components/common/AppFooter';
 import { PaymentMethodForm } from '../components/PaymentMethodForm';
-import designTokens from '../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 export const BillingScreen = () => {
   const { user } = useAuth();

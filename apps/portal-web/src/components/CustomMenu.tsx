@@ -1,10 +1,10 @@
 import { Menu } from 'react-admin';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const CustomMenu = () => {
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user } = useAuth();
   
   // Check user role: admin, site_admin, trial_lead, or site_user
   const isCROAdmin = user?.role === 'admin';

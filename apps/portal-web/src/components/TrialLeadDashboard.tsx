@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader } from './Card';
 import { Title } from 'react-admin';
 import { CSpinner, CBadge } from '@coreui/react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Box, Typography, useMediaQuery } from '@mui/material';
+import { trialsService } from '../apiClient';
 
 interface Trial {
   trial_id: number;
@@ -79,7 +80,7 @@ const MobileAssignedTrialCard = ({ trial, getPhaseColor, getStatusColor }: { tri
 };
 
 export const TrialLeadDashboard = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [trials, setTrials] = useState<Trial[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -90,18 +91,7 @@ export const TrialLeadDashboard = () => {
       try {
         setLoading(true);
 
-        const API_BASE_URL = import.meta.env.VITE_API_URL;
-        if (!API_BASE_URL) {
-          throw new Error('VITE_API_URL environment variable is not set');
-        }
-
-        const apiKey = import.meta.env.VITE_API_KEY;
-        const headers: HeadersInit = {};
-        if (apiKey) {
-          headers['X-API-Key'] = apiKey;
-        }
-
-        // Get user ID from UserContext
+        // Get user ID from AuthContext
         const userId = user?.id;
 
         if (!userId) {
@@ -111,17 +101,15 @@ export const TrialLeadDashboard = () => {
           return;
         }
 
-        // Fetch only trials this user is assigned to
-        const url = `${API_BASE_URL}/trials?user_id=${userId}`;
+        // Fetch only trials this user is assigned to using TrialsService
         console.log('[TrialLeadDashboard] Fetching trials for user_id:', userId);
-        const response = await fetch(url, { headers });
-        const result = await response.json();
+        const response = await trialsService.getTrials({ userId });
 
-        console.log('[TrialLeadDashboard] Trials data:', result);
+        console.log('[TrialLeadDashboard] Trials data:', response);
 
-        if (result.success && result.data) {
+        if (response.success && response.data) {
           // Filter to only active trials
-          const activeTrials = result.data.filter((t: Trial) =>
+          const activeTrials = response.data.filter((t: Trial) =>
             t.status === 'active' || t.status === 'enrolling'
           );
           setTrials(activeTrials);

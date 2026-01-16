@@ -16,7 +16,6 @@ import {
   getSiteUserNavigation
 } from '../navigation';
 import { AppSidebarNav } from './AppSidebarNav';
-import { designTokens } from '../design-tokens';
 
 export const AppSidebar = () => {
   const { activeRole } = useRole();
@@ -37,34 +36,32 @@ export const AppSidebar = () => {
 
   return (
     <CSidebar
-      className="border-end"
+      className="border-end sidebar-brand-green"
       colorScheme="dark"
       position="fixed"
       narrow={sidebarUnfoldable}
       visible={sidebarShow}
       onVisibleChange={setSidebarShow}
-      style={{ backgroundColor: designTokens.color.brand.accentGreen }}
     >
       <CSidebarHeader className="border-bottom px-4">
-        <CSidebarBrand 
-          className="cursor-pointer text-decoration-none" 
+        <CSidebarBrand
+          className="cursor-pointer text-decoration-none"
           onClick={() => navigate('/')}
         >
           <div className="sidebar-brand-full">
-            <img 
-              src="/protocolsync-logo.png" 
-              alt="Protocol Sync" 
-              style={{ height: '20px', width: 'auto', marginRight: '8px' }}
+            <img
+              src="/protocolsync-logo.png"
+              alt="Protocol Sync"
+              className="sidebar-brand-logo h-5 w-auto mr-2"
             />
             <span className="text-white text-lg font-bold uppercase">
               Protocol Sync
             </span>
           </div>
-          <img 
-            className="sidebar-brand-narrow"
-            src="/protocolsync-logo.png" 
-            alt="PS" 
-            style={{ height: '32px', width: 'auto' }}
+          <img
+            className="sidebar-brand-narrow sidebar-brand-logo-narrow h-8 w-auto"
+            src="/protocolsync-logo.png"
+            alt="PS"
           />
         </CSidebarBrand>
       </CSidebarHeader>

@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Title } from 'react-admin';
 import { Card, CardContent, CardHeader } from './Card';
 import { PaymentMethodForm } from './PaymentMethodForm';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Box, Typography, Tabs, Tab, Button, Chip } from '@mui/material';
-import { designTokens } from '../design-tokens';
+import { designTokens } from '@protocolsync/shared-styles/design-tokens';
 import {
   CModal,
   CModalHeader,
@@ -87,7 +87,7 @@ interface Invoice {
 
 
 export const Billing = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);

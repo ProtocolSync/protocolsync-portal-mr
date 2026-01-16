@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNotify } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useMsal } from '@azure/msal-react';
 import {
   CModal,
@@ -14,6 +14,7 @@ import {
   CFormLabel,
   CAlert
 } from '@coreui/react';
+import { apiScopes } from '../authConfig';
 
 interface SiteUserFormData {
   email: string;
@@ -31,7 +32,7 @@ interface AddSiteUserModalProps {
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const AddSiteUserModal = ({ visible, siteId, onClose, onSuccess }: AddSiteUserModalProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { instance } = useMsal();
   const notify = useNotify();
   const [formData, setFormData] = useState<SiteUserFormData>({
@@ -48,7 +49,7 @@ export const AddSiteUserModal = ({ visible, siteId, onClose, onSuccess }: AddSit
     
     try {
       const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
+        scopes: apiScopes,
         account: accounts[0]
       });
       return tokenResponse.accessToken;

@@ -12,9 +12,8 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../contexts/AuthContext';
-import { ENV } from '../../config/env';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import designTokens from '../../design-tokens.json';
+import { sitesService, usersService, trialsService } from '../../services/apiClient';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface TrialFormData {
   trial_number: string;
@@ -86,24 +85,17 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
     }
   }, [visible, user]);
 
-  const getAuthToken = async () => {
-    return await AsyncStorage.getItem('access_token') || '';
-  };
-
   const fetchSites = async () => {
     try {
       setLoadingSites(true);
-      const token = await getAuthToken();
-      const response = await fetch(`${ENV.API_URL}/companies/${user?.company?.id}/sites`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Key': ENV.API_KEY,
-        },
-      });
+      const response = await sitesService.getSitesByCompany(user!.company!.id);
 
-      const result = await response.json();
-      if (result.success && result.data) {
-        setSites(result.data);
+      if (response.success && response.data) {
+        setSites(response.data.map((s: any) => ({
+          site_id: s.site_id,
+          site_number: s.site_number,
+          site_name: s.site_name,
+        })));
       }
     } catch (error) {
       console.error('Error fetching sites:', error);
@@ -115,20 +107,18 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      const token = await getAuthToken();
-      const response = await fetch(`${ENV.API_URL}/companies/${user?.company?.id}/users`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Key': ENV.API_KEY,
-        },
-      });
+      const response = await usersService.getCompanyUsers(user!.company!.id);
 
-      const result = await response.json();
-      if (result.success && result.data) {
-        const eligiblePIs = result.data.filter(
+      if (response.success && response.data) {
+        const eligiblePIs = response.data.filter(
           (u: any) => u.role === 'admin' || u.role === 'site_admin' || u.role === 'trial_lead'
         );
-        setUsers(eligiblePIs);
+        setUsers(eligiblePIs.map((u: any) => ({
+          user_id: u.user_id,
+          first_name: u.first_name || u.name?.split(' ')[0] || '',
+          last_name: u.last_name || u.name?.split(' ').slice(1).join(' ') || '',
+          email: u.email,
+        })));
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -156,8 +146,6 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
     setIsSubmitting(true);
 
     try {
-      const token = await getAuthToken();
-
       const requestBody = {
         site_id: parseInt(formData.site_id),
         trial_number: formData.trial_number,
@@ -169,31 +157,22 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
         indication: formData.indication || undefined,
         study_type: formData.study_type || undefined,
         pi_user_id: formData.pi_user_id ? parseInt(formData.pi_user_id) : undefined,
-        created_by_user_id: user.id,
+        created_by_user_id: typeof user.id === 'string' ? parseInt(user.id) : user.id,
+        status: 'active',
       };
 
       console.log('[AddTrialModal] Creating trial:', requestBody);
 
-      const response = await fetch(`${ENV.API_URL}/trials`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Key': ENV.API_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await trialsService.createTrial(requestBody);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to create trial' }));
-        throw new Error(errorData.error || `Failed to create trial (${response.status})`);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create trial');
       }
 
-      const result = await response.json();
-      console.log('[AddTrialModal] Trial created:', result);
+      console.log('[AddTrialModal] Trial created:', response.data);
 
       Alert.alert('Success', `Trial ${formData.trial_name} created successfully.`);
-      
+
       // Reset form
       setFormData({
         trial_number: '',
@@ -207,7 +186,7 @@ export const AddTrialModal = ({ visible, onClose, onSuccess }: AddTrialModalProp
         pi_user_id: '',
         site_id: user.site?.id?.toString() || '',
       });
-      
+
       onSuccess();
     } catch (error) {
       console.error('Error creating trial:', error);

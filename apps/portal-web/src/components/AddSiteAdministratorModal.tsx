@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotify } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useMsal } from '@azure/msal-react';
 import {
   CModal,
@@ -16,6 +16,7 @@ import {
   CAlert,
   CSpinner
 } from '@coreui/react';
+import { apiScopes } from '../authConfig';
 
 interface Site {
   site_id: number;
@@ -39,7 +40,7 @@ interface AddSiteAdministratorModalProps {
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const AddSiteAdministratorModal = ({ visible, onClose, onSuccess }: AddSiteAdministratorModalProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { instance } = useMsal();
   const notify = useNotify();
   const [sites, setSites] = useState<Site[]>([]);
@@ -59,7 +60,7 @@ export const AddSiteAdministratorModal = ({ visible, onClose, onSuccess }: AddSi
     
     try {
       const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
+        scopes: apiScopes,
         account: accounts[0]
       });
       return tokenResponse.accessToken;

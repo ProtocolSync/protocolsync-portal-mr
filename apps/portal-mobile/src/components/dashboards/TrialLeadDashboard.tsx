@@ -12,7 +12,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useAuth } from '../../contexts/AuthContext';
 import { trialsService } from '../../services/apiClient';
 import { AppFooter } from '../common/AppFooter';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface Trial {
   trial_id: number;

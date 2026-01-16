@@ -21,15 +21,9 @@ export const VersionBadge = ({ version, className = '' }: VersionBadgeProps) => 
   const displayVersion = cleanVersion.startsWith('V') ? cleanVersion : `V${cleanVersion}`;
 
   return (
-    <CBadge 
-      color="primary" 
-      className={`${className}`}
-      style={{
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        padding: '0.25rem 0.75rem',
-        borderRadius: '0.375rem'
-      }}
+    <CBadge
+      color="primary"
+      className={`text-xs font-semibold px-3 py-1 rounded-md ${className}`}
     >
       {displayVersion}
     </CBadge>

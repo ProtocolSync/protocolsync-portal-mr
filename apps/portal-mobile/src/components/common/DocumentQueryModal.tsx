@@ -11,7 +11,7 @@ import {
 import { TextInput, Avatar, IconButton } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { documentQueryService } from '../../services/apiClient';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 interface QueryMessage {
   id: string;

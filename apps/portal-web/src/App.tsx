@@ -23,9 +23,9 @@ import { SiteUsers } from './components/SiteUsers';
 import { SiteAdministrators } from './components/SiteAdministrators';
 import { Trials } from './components/Trials';
 import { Billing } from './components/Billing';
-import { UserProvider, useUser } from './contexts/UserContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RoleProvider, useRole } from './contexts/RoleContext';
-import { designTokens } from './design-tokens';
+import { designTokens } from '@protocolsync/shared-styles/design-tokens';
 
 // Verify API key is loaded
 console.log('🔑 API Configuration Check:');
@@ -123,7 +123,7 @@ try {
 
 // Component to determine which dashboard to show based on active role
 const DashboardRouter = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { activeRole } = useRole();
   
   console.log('[DashboardRouter] User object:', user);
@@ -150,7 +150,7 @@ const DashboardRouter = () => {
 function App() {
   return (
     <MsalProvider instance={msalInstance}>
-      <UserProvider>
+      <AuthProvider>
         <RoleProvider>
           <ProtectedRoute>
             <Admin 
@@ -188,7 +188,7 @@ function App() {
           </Admin>
           </ProtectedRoute>
         </RoleProvider>
-      </UserProvider>
+      </AuthProvider>
     </MsalProvider>
   );
 }

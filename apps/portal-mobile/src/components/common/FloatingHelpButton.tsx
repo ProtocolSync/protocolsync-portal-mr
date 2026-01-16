@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { FAB } from 'react-native-paper';
 import { HelpChatModal } from './HelpChatModal';
-import designTokens from '../../design-tokens.json';
+import designTokens from '@protocolsync/shared-styles/mobile/tokens';
 
 export const FloatingHelpButton = () => {
   const [helpModalVisible, setHelpModalVisible] = useState(false);

@@ -19,5 +19,14 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Warn against inline styles - prefer Tailwind classes
+      'no-restricted-syntax': ['warn',
+        {
+          selector: 'JSXAttribute[name.name="style"]',
+          message: 'Avoid inline styles. Use Tailwind CSS classes from @protocolsync/shared-styles instead.'
+        }
+      ],
+    },
   },
 ])

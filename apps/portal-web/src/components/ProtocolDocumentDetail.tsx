@@ -9,7 +9,6 @@ import {
   Title,
   useNotify
 } from 'react-admin';
-import { useMsal } from '@azure/msal-react';
 import {
   CButton,
   CBadge
@@ -18,8 +17,9 @@ import { VersionBadge } from './VersionBadge';
 import CIcon from '@coreui/icons-react';
 import { cilCommentBubble, cilCloudDownload, cilArrowLeft } from '@coreui/icons';
 import { ChatWidget } from '../widgets/ChatWidget';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import '../widgets/ChatWidget/styles/ChatWidget.css';
+import { protocolDocumentsService } from '../apiClient';
 
 interface ProtocolVersion {
   id: string;
@@ -35,8 +35,7 @@ interface ProtocolVersion {
 export const ProtocolDocumentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { instance } = useMsal();
-  const { user } = useUser();
+  const { user, getToken } = useAuth();
   const notify = useNotify();
 
   const [versions, setVersions] = useState<ProtocolVersion[]>([]);
@@ -52,101 +51,40 @@ export const ProtocolDocumentDetail = () => {
     try {
       setLoading(true);
 
-      // Get JWT token
-      const accounts = instance.getAllAccounts();
-      let token = '';
-
-      if (accounts.length > 0) {
-        try {
-          const tokenResponse = await instance.acquireTokenSilent({
-            scopes: ['User.Read'],
-            account: accounts[0]
-          });
-          token = tokenResponse.accessToken;
-          setAuthToken(token);
-        } catch (error) {
-          console.error('Failed to acquire token:', error);
-        }
+      // Get JWT token for ChatWidget
+      try {
+        const token = await getToken();
+        setAuthToken(token);
+      } catch (error) {
+        console.error('Failed to acquire token:', error);
       }
 
-      // Fetch document details
-      const API_BASE_URL = import.meta.env.VITE_API_URL;
+      // Fetch document versions using ProtocolDocumentsService
+      const response = await protocolDocumentsService.getProtocolVersions(id);
 
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const apiKey = import.meta.env.VITE_API_KEY;
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/document/${id}`, {
-        headers
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch document (${response.status}): ${response.statusText}`);
-      }
-
-      const rawData = await response.json();
-      const doc = rawData.data || rawData;
-
-      const docName = doc.document_type || doc.original_filename || 'Untitled';
-      setDocumentName(docName);
-
-      // Fetch all versions of this document type
-      const allDocsResponse = await fetch(`${API_BASE_URL}/documents?limit=100`, {
-        headers
-      });
-
-      if (allDocsResponse.ok) {
-        const allDocsData = await allDocsResponse.json();
-        const allDocs = allDocsData.data || allDocsData.documents || [];
-
-        const getBaseName = (name: string) => {
-          return name
-            .replace(/\.pdf$/i, '')
-            .replace(/\.docx?$/i, '')
-            .replace(/\s*v?\d+\.\d+.*$/i, '')
-            .trim()
-            .toLowerCase();
-        };
-
-        const targetBaseName = getBaseName(docName);
-
-        const sameTypeVersions = allDocs.filter((d: any) => {
-          const dType = d.document_type || d.original_filename || '';
-          const dBaseName = getBaseName(dType);
-          return dBaseName === targetBaseName || dType.toLowerCase().trim() === docName.toLowerCase().trim();
-        });
-
-        if (sameTypeVersions.length === 0) {
-          sameTypeVersions.push(doc);
+      if (response.success && response.data) {
+        // Get document name from the first version
+        const firstVersion = response.data[0];
+        if (firstVersion) {
+          setDocumentName(firstVersion.fileName?.replace(/\.[^/.]+$/, '') || 'Protocol Document');
         }
 
-        const transformedVersions = sameTypeVersions
-          .map((v: any) => ({
-            id: v.document_id || v.id,
-            versionNumber: v.document_version || 'N/A',
-            status: v.status || 'uploaded',
-            uploadedAt: v.upload_date || v.created_at || new Date().toISOString(),
-            uploadedBy: v.uploaded_by_name || v.uploaded_by_email || (v.uploaded_by_user_id ? String(v.uploaded_by_user_id) : null) || 'System',
-            fileName: v.original_filename || 'document.pdf',
-            fileUrl: v.blob_url || v.file_url,
-            recordHash: v.record_hash
-          }))
-          .sort((a: ProtocolVersion, b: ProtocolVersion) =>
-            new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-          );
+        // Transform versions to match our interface
+        const transformedVersions = response.data.map((v) => ({
+          id: v.id,
+          versionNumber: v.versionNumber,
+          status: v.status,
+          uploadedAt: v.uploadedAt,
+          uploadedBy: v.uploadedBy,
+          fileName: v.fileName,
+          fileUrl: v.fileUrl,
+          recordHash: v.recordHash
+        }));
 
         setVersions(transformedVersions);
+      } else {
+        notify('Failed to load document versions', { type: 'error' });
       }
-
     } catch (error) {
       console.error('Error fetching document versions:', error);
       notify('Failed to load document versions', { type: 'error' });
@@ -157,7 +95,8 @@ export const ProtocolDocumentDetail = () => {
 
   useEffect(() => {
     refreshVersions();
-  }, [id, instance, notify]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleDownload = (fileUrl: string) => {
     window.open(fileUrl, '_blank');
@@ -175,44 +114,10 @@ export const ProtocolDocumentDetail = () => {
 
   const handleSetCurrent = async (versionId: string) => {
     try {
-      const accounts = instance.getAllAccounts();
-      let authToken = '';
+      const response = await protocolDocumentsService.updateVersionStatus(versionId, 'Current');
 
-      if (accounts.length > 0) {
-        try {
-          const tokenResponse = await instance.acquireTokenSilent({
-            scopes: ['User.Read'],
-            account: accounts[0]
-          });
-          authToken = tokenResponse.accessToken;
-        } catch (error) {
-          console.error('Failed to acquire token:', error);
-        }
-      }
-
-      const API_BASE_URL = import.meta.env.VITE_API_URL;
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      const apiKey = import.meta.env.VITE_API_KEY;
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/documents/${versionId}/status`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ status: 'Current' })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update version status');
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update version status');
       }
 
       notify('Version set to Current successfully', { type: 'success' });
@@ -285,16 +190,7 @@ export const ProtocolDocumentDetail = () => {
           <FunctionField
             label="Record Hash (21 CFR Part 11)"
             render={(record: ProtocolVersion) => (
-              <span
-                style={{
-                  fontFamily: 'monospace',
-                  fontSize: '0.75rem',
-                  color: '#6c757d',
-                  wordBreak: 'break-all',
-                  display: 'block',
-                  maxWidth: '300px'
-                }}
-              >
+              <span className="font-mono text-xs text-text-subtle break-all block max-w-xs">
                 {record.recordHash || 'Not available'}
               </span>
             )}
@@ -304,7 +200,7 @@ export const ProtocolDocumentDetail = () => {
             render={(record: ProtocolVersion) => {
               const isCurrent = record.status.toLowerCase() === 'current';
               return (
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div className="flex gap-2 flex-wrap">
                   {isCurrent && (
                     <CButton
                       color="info"

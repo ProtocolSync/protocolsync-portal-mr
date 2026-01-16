@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNotify } from 'react-admin';
-import { useMsal } from '@azure/msal-react';
 import {
   CModal,
   CModalHeader,
@@ -14,6 +13,7 @@ import {
   CAlert,
   CSpinner
 } from '@coreui/react';
+import { trialsService } from '../apiClient';
 
 interface AssignUserToTrialModalProps {
   visible: boolean;
@@ -37,8 +37,6 @@ interface Trial {
   trial_name: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
 export const AssignUserToTrialModal = ({
   visible,
   onClose,
@@ -46,7 +44,6 @@ export const AssignUserToTrialModal = ({
   user,
   siteId
 }: AssignUserToTrialModalProps) => {
-  const { instance } = useMsal();
   const notify = useNotify();
   const [trials, setTrials] = useState<Trial[]>([]);
   const [selectedTrialId, setSelectedTrialId] = useState('');
@@ -55,37 +52,6 @@ export const AssignUserToTrialModal = ({
   const [loadingTrials, setLoadingTrials] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentAssignments, setCurrentAssignments] = useState<number[]>([]);
-
-  const getAuthToken = async () => {
-    const accounts = instance.getAllAccounts();
-    if (accounts.length === 0) return '';
-
-    try {
-      const tokenResponse = await instance.acquireTokenSilent({
-        scopes: ['User.Read'],
-        account: accounts[0]
-      });
-      return tokenResponse.accessToken;
-    } catch (error) {
-      console.error('Failed to acquire token:', error);
-      return '';
-    }
-  };
-
-  const getHeaders = async (): Promise<HeadersInit> => {
-    const token = await getAuthToken();
-    const apiKey = import.meta.env.VITE_API_KEY;
-    const headers: HeadersInit = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
-    }
-
-    return headers;
-  };
 
   // Fetch trials for this site and user's current assignments
   useEffect(() => {
@@ -100,20 +66,16 @@ export const AssignUserToTrialModal = ({
   const fetchTrials = async () => {
     try {
       setLoadingTrials(true);
-      const headers = await getHeaders();
-      const response = await fetch(`${API_BASE_URL}/trials?site_id=${siteId}`, {
-        headers
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch trials');
-      }
+      // Use TrialsService to fetch trials for this site
+      const response = await trialsService.getTrials({ siteId });
 
-      const result = await response.json();
-      if (result.success && result.data) {
+      if (response.success && response.data) {
         // Filter to only active trials
-        const activeTrials = result.data.filter((t: any) => t.status === 'active');
+        const activeTrials = response.data.filter((t: any) => t.status === 'active');
         setTrials(activeTrials);
+      } else {
+        throw new Error(response.error || 'Failed to fetch trials');
       }
     } catch (error) {
       console.error('Error fetching trials:', error);
@@ -146,26 +108,18 @@ export const AssignUserToTrialModal = ({
     setError(null);
 
     try {
-      const headers = await getHeaders();
+      // Use TrialsService to assign user to trial
+      const response = await trialsService.assignUserToTrial(
+        selectedTrialId,
+        user.user_id,
+        selectedRole
+      );
 
-      const response = await fetch(`${API_BASE_URL}/trials/${selectedTrialId}/users`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          user_id: user.user_id,
-          trial_role: selectedRole
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: 'Failed to assign user to trial'
-        }));
-        throw new Error(errorData.error || `Failed to assign user (${response.status})`);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to assign user to trial');
       }
 
-      const result = await response.json();
-      console.log('[AssignUserToTrialModal] User assigned:', result);
+      console.log('[AssignUserToTrialModal] User assigned:', response.data);
 
       const isUpdate = currentAssignments.includes(parseInt(selectedTrialId));
       const message = isUpdate

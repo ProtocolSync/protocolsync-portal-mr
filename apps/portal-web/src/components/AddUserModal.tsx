@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotify } from 'react-admin';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 import { usersService, sitesService } from '../apiClient';
 import {
   CModal,
@@ -39,7 +39,7 @@ interface AddUserModalProps {
 }
 
 export const AddUserModal = ({ visible, onClose, onSuccess }: AddUserModalProps) => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const notify = useNotify();
   const [formData, setFormData] = useState<UserFormData>({
     role: 'site_user',

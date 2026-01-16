@@ -14,16 +14,17 @@ export const msalConfig: Configuration = {
   },
 };
 
-// Scopes for the API access
+// Custom API scope for ProtocolSync backend
+const API_SCOPE = 'api://65b5eddd-4d68-421e-97a1-65399bfb4a48/access_as_user';
+
+// Scopes for login - request the custom API scope
 export const loginRequest: PopupRequest = {
-  scopes: ['User.Read'], // Microsoft Graph API permission
+  scopes: [API_SCOPE],
   prompt: 'select_account', // Always show account picker
 };
 
-// API scopes if you have a custom backend API registered in Azure AD
-export const apiRequest = {
-  scopes: ['api://YOUR_API_CLIENT_ID/.default'], // Replace with your API scope
-};
+// API scopes for silent token acquisition
+export const apiScopes = [API_SCOPE];
 
 /**
  * Configuration notes:

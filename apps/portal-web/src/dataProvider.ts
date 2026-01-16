@@ -1,5 +1,6 @@
 import type { DataProvider, GetListParams, GetOneParams, UpdateParams } from 'react-admin';
 import type { IPublicClientApplication } from '@azure/msal-browser';
+import { apiScopes } from './authConfig';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -57,7 +58,7 @@ const getAuthHeaders = async (includeContentType: boolean = true): Promise<Recor
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length > 0) {
         const tokenResponse = await msalInstance.acquireTokenSilent({
-          scopes: ['User.Read'],
+          scopes: apiScopes,
           account: accounts[0]
         });
         headers['Authorization'] = `Bearer ${tokenResponse.accessToken}`;

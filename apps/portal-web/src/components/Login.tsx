@@ -1,5 +1,3 @@
-import { useMsal } from '@azure/msal-react';
-import { loginRequest } from '../authConfig';
 import { useState } from 'react';
 import {
   CButton,
@@ -12,47 +10,26 @@ import {
   CSpinner,
   CAlert,
 } from '@coreui/react';
-import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Login = () => {
-  const { instance } = useMsal();
-  const { error } = useUser();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { login, loading, error } = useAuth();
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    setLocalError(null);
     try {
-      setIsLoggingIn(true);
-      console.log('🔄 Starting Azure AD login...');
-      
-      const response = await instance.loginPopup(loginRequest);
-      console.log('✅ Azure AD login successful:', response);
-      
-      // Set the active account
-      if (response.account) {
-        instance.setActiveAccount(response.account);
-        console.log('✅ Active account set:', response.account.username);
-      }
-
-      // Don't reload - MSAL will handle the state update
-      // The ProtectedRoute component will automatically re-render when authentication state changes
-      console.log('✅ Login complete - authentication state updated');
-      
-      // Small delay to ensure MSAL state is fully updated
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-    } catch (error) {
-      console.error('❌ Login failed:', error);
-      setIsLoggingIn(false);
-      
-      // Only show alert if it's not a user cancellation
-      if (error && typeof error === 'object' && 'errorCode' in error) {
-        const msalError = error as any;
-        if (msalError.errorCode !== 'user_cancelled') {
-          alert('Login failed. Please try again.');
-        }
+      await login();
+    } catch (err: unknown) {
+      // Error handling is done in AuthContext, but catch any unexpected errors
+      const msalError = err as { errorCode?: string };
+      if (msalError?.errorCode !== 'user_cancelled') {
+        setLocalError('Login failed. Please try again.');
       }
     }
   };
+
+  const displayError = error || localError;
 
   return (
     <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
@@ -67,9 +44,9 @@ export const Login = () => {
                       <img
                         src="/protocolsync-logo.png"
                         alt="Protocol Sync Logo"
-                        style={{ height: '2.5rem' }}
+                        className="h-10"
                       />
-                      <h2 className="text-uppercase fw-bold mb-0" style={{ color: '#005C4D' }}>
+                      <h2 className="text-uppercase fw-bold mb-0 text-brand-accentGreen">
                         Protocol Sync
                       </h2>
                     </div>
@@ -77,59 +54,53 @@ export const Login = () => {
                   <h1>Login</h1>
                   <p className="text-body-secondary mb-4">Sign in to your compliance portal</p>
 
-                  {error && (
+                  {displayError && (
                     <CAlert color="danger" className="mb-4">
                       <strong>Access Denied:</strong>{' '}
-                      {error.includes('support@protocolsync.org') ? (
+                      {displayError.includes('support@protocolsync.org') ? (
                         <>
-                          {error.split('support@protocolsync.org')[0]}
+                          {displayError.split('support@protocolsync.org')[0]}
                           <a href="mailto:support@protocolsync.org" className="text-danger text-decoration-underline">
                             support@protocolsync.org
                           </a>
-                          {error.split('support@protocolsync.org')[1]}
+                          {displayError.split('support@protocolsync.org')[1]}
                         </>
                       ) : (
-                        error
+                        displayError
                       )}
                     </CAlert>
                   )}
-                  
-                  <CButton 
-                    color="primary" 
-                    className="w-100 d-flex align-items-center justify-content-center gap-2"
+
+                  <CButton
+                    color="primary"
+                    className="w-100 d-flex align-items-center justify-content-center gap-2 bg-brand-accentGreen border-brand-accentGreen"
                     onClick={handleLogin}
-                    disabled={isLoggingIn}
-                    style={{ backgroundColor: '#005C4D', borderColor: '#005C4D' }}
+                    disabled={loading}
                   >
-                    {isLoggingIn ? (
+                    {loading ? (
                       <>
                         <CSpinner size="sm" />
                         Signing in...
                       </>
                     ) : (
                       <>
-                        <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M10 0H0V10H10V0Z" fill="#F25022"/>
-                          <path d="M21 0H11V10H21V0Z" fill="#7FBA00"/>
-                          <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
-                          <path d="M21 11H11V21H21V11Z" fill="#FFB900"/>
-                        </svg>
+                        <MicrosoftIcon />
                         Sign in with Microsoft
                       </>
                     )}
                   </CButton>
-                  
+
                   <div className="mt-4 text-center">
-                    <p className="text-body-secondary mb-1" style={{ fontSize: '0.875rem' }}>
+                    <p className="text-body-secondary mb-1 text-sm">
                       For site users only
                     </p>
-                    <p className="text-body-secondary mb-0" style={{ fontSize: '0.875rem' }}>
+                    <p className="text-body-secondary mb-0 text-sm">
                       Protected by Microsoft Entra ID
                     </p>
                   </div>
                 </CCardBody>
               </CCard>
-              <CCard className="text-white py-5" style={{ width: '44%', backgroundColor: '#005C4D' }}>
+              <CCard className="text-white py-5 w-[44%] bg-brand-accentGreen">
                 <CCardBody className="text-center">
                   <div>
                     <h2>Sign up</h2>
@@ -154,3 +125,12 @@ export const Login = () => {
     </div>
   );
 };
+
+const MicrosoftIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 0H0V10H10V0Z" fill="#F25022"/>
+    <path d="M21 0H11V10H21V0Z" fill="#7FBA00"/>
+    <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
+    <path d="M21 11H11V21H21V11Z" fill="#FFB900"/>
+  </svg>
+);

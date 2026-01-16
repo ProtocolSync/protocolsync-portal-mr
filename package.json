@@ -21,6 +21,7 @@
     "ios": "npm run ios -w @protocolsync/portal-mobile"
   },
   "devDependencies": {
+    "babel-preset-expo": "^54.0.9",
     "turbo": "^2.0.0"
   },
   "engines": {
