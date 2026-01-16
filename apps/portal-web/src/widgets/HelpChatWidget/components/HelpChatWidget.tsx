@@ -14,9 +14,9 @@ import { HelpChatApiService } from '../services/helpChatApi';
 import { HelpMessageList } from './HelpMessageList';
 import { HelpEscalationModal } from './HelpEscalationModal';
 
-const WELCOME_MESSAGE = `Hi! I'm your Protocol Sync Help Assistant. I can help you with:
+const WELCOME_MESSAGE = `Hi! I'm your GCP Tracker Help Assistant. I can help you with:
 
-• How to use Protocol Sync features
+• How to use GCP Tracker features
 • Questions about protocol management
 • Delegation and compliance workflows
 • Site-specific protocol details
@@ -258,7 +258,7 @@ export const HelpChatWidget: React.FC<HelpChatWidgetProps> = ({
             <CBadge color="info" className="d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', borderRadius: '50%', fontSize: '16px' }}>
               <CIcon icon={cilLifeRing} />
             </CBadge>
-            <div className="fw-semibold">ProtocolSync Help Assistant</div>
+            <div className="fw-semibold">GCP Tracker Help Assistant</div>
           </CModalTitle>
         </CModalHeader>
         <CModalBody>
@@ -266,7 +266,7 @@ export const HelpChatWidget: React.FC<HelpChatWidgetProps> = ({
             <div className="mb-3" style={{ fontSize: '48px' }}>🔒</div>
             <h4>Access Denied</h4>
             <p className="text-medium-emphasis">
-              Please log into the ProtocolSync Portal to access the help assistant.
+              Please log into the GCP Tracker Portal to access the help assistant.
             </p>
           </div>
         </CModalBody>
@@ -291,7 +291,7 @@ export const HelpChatWidget: React.FC<HelpChatWidgetProps> = ({
                 <CIcon icon={cilLifeRing} />
               </CBadge>
               <div>
-                <div className="fw-semibold">ProtocolSync Help Assistant</div>
+                <div className="fw-semibold">GCP Tracker Help Assistant</div>
                 <small className="text-medium-emphasis">AI-powered help & documentation</small>
               </div>
             </div>
@@ -331,7 +331,7 @@ export const HelpChatWidget: React.FC<HelpChatWidgetProps> = ({
             <div className="w-100 d-flex gap-2">
               <textarea
                 className="form-control"
-                placeholder="Ask a question about ProtocolSync..."
+                placeholder="Ask a question about GCP Tracker..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}

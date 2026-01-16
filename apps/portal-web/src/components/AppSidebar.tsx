@@ -51,17 +51,17 @@ export const AppSidebar = () => {
           <div className="sidebar-brand-full">
             <img
               src="/protocolsync-logo.png"
-              alt="Protocol Sync"
+              alt="Protocol Sync Logo"
               className="sidebar-brand-logo h-5 w-auto mr-2"
             />
             <span className="text-white text-lg font-bold uppercase">
-              Protocol Sync
+              GCP Tracker
             </span>
           </div>
           <img
             className="sidebar-brand-narrow sidebar-brand-logo-narrow h-8 w-auto"
             src="/protocolsync-logo.png"
-            alt="PS"
+            alt="Protocol Sync Logo"
           />
         </CSidebarBrand>
       </CSidebarHeader>

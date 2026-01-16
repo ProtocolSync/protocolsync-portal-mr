@@ -18,12 +18,12 @@ export const CustomAppBar = () => (
     <div className="flex items-center gap-2 sm:gap-4 uppercase mr-auto ml-2">
       <img 
         src="/protocolsync-logo.png" 
-        alt="Protocol Sync Logo" 
+        alt="GCP Tracker Logo" 
         className="h-logo"
       />
       <span className="text-s sm:text-l font-bold text-text-inverse">
-        <span className="hidden sm:inline">Protocol Sync</span>
-        <span className="sm:hidden">Protocol Sync</span>
+        <span className="hidden sm:inline">GCP Tracker</span>
+        <span className="sm:hidden">GCP Tracker</span>
       </span>
     </div>
     <UserProfileDisplay />

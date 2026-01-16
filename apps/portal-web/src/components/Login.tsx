@@ -44,10 +44,10 @@ export const Login = () => {
                       <img
                         src="/protocolsync-logo.png"
                         alt="Protocol Sync Logo"
-                        className="h-10"
+                        className="login-logo"
                       />
-                      <h2 className="text-uppercase fw-bold mb-0 text-brand-accentGreen">
-                        Protocol Sync
+                      <h2 className="text-uppercase fw-bold mb-0 login-brand-title">
+                        GCP<br />Tracker
                       </h2>
                     </div>
                   </div>
@@ -73,7 +73,7 @@ export const Login = () => {
 
                   <CButton
                     color="primary"
-                    className="w-100 d-flex align-items-center justify-content-center gap-2 bg-brand-accentGreen border-brand-accentGreen"
+                    className="w-100 d-flex align-items-center justify-content-center gap-2 login-btn-microsoft"
                     onClick={handleLogin}
                     disabled={loading}
                   >
@@ -91,27 +91,27 @@ export const Login = () => {
                   </CButton>
 
                   <div className="mt-4 text-center">
-                    <p className="text-body-secondary mb-1 text-sm">
+                    <p className="text-body-secondary mb-1 login-footer-text">
                       For site users only
                     </p>
-                    <p className="text-body-secondary mb-0 text-sm">
+                    <p className="text-body-secondary mb-0 login-footer-text">
                       Protected by Microsoft Entra ID
                     </p>
                   </div>
                 </CCardBody>
               </CCard>
-              <CCard className="text-white py-5 w-[44%] bg-brand-accentGreen">
-                <CCardBody className="text-center">
+              <CCard className="text-white py-5 login-signup-card">
+                <CCardBody className="text-center d-flex flex-column justify-content-center">
                   <div>
                     <h2>Sign up</h2>
                     <p>
-                      Access your clinical trial protocols, delegation logs, and compliance documentation in one secure location.
+                      The GCP Tracker is a field tool for clinical research organizations to manage clinical trial sites.
                     </p>
                     <p className="mt-4">
-                      Streamlined protocol management for research sites and sponsors.
+                      Interested in using the GCP Tracker for your organization? Register now to get started!
                     </p>
                     <a href={`${import.meta.env.VITE_WEBSITE_URL}/register`} target="_blank" rel="noopener noreferrer">
-                      <CButton color="primary" className="mt-3" active tabIndex={-1}>
+                      <CButton color="primary" className="mt-3 login-btn-register" tabIndex={-1}>
                         Register Now!
                       </CButton>
                     </a>

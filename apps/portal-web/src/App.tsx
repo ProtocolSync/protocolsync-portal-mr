@@ -157,7 +157,7 @@ function App() {
               dataProvider={protocolSyncProvider} 
               dashboard={DashboardRouter}
               layout={CustomLayout}
-              title="ProtocolSync Portal"
+              title="GCP Tracker Portal"
               theme={theme}
             >
             {/* Register resources for React Admin */}
